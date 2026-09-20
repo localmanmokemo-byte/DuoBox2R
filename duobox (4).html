@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>
+/* Rebuild bootstrap: if a hand-edited full-source override is saved on this device,
+   navigate to it instead of running the built-in file. This uses a real navigation
+   (Blob URL) rather than document.write, because document.write only inserts content
+   mid-parse and then keeps parsing the rest of the original page afterward — it doesn't
+   discard it, which caused every top-level variable to get declared twice.
+   If the last attempt to load an override never finished (it crashed), auto-revert to
+   the built-in version so one bad edit can't lock you out. */
+(function(){
+  try{
+    if(location.protocol !== 'blob:') localStorage.setItem('duobox.homeUrl', location.href);
+  }catch(e){}
+  if(location.protocol === 'blob:') return; /* this already IS an applied rebuild — just run it */
+  if(window.__duoboxBootChecked) return;
+  window.__duoboxBootChecked = true;
+  try{
+    var pending = localStorage.getItem('duobox.overridePending');
+    var src = localStorage.getItem('duobox.sourceOverride');
+    if(pending === '1'){
+      localStorage.removeItem('duobox.sourceOverride');
+      localStorage.removeItem('duobox.overridePending');
+      sessionStorage.setItem('duobox.revertedNotice','1');
+      return;
+    }
+    if(src){
+      localStorage.setItem('duobox.overridePending','1');
+      var blobUrl = URL.createObjectURL(new Blob([src], {type:'text/html'}));
+      location.replace(blobUrl);
+    }
+  }catch(e){}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DUOBOX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#191134;
+  --paper:#F3EDFF;
+  --card:#FFFFFF;
+  --card-2:#EDE4FF;
+  --line:#191134;
+  --text:#191134;
+  --muted:#6A5E95;
+  --p1:#FF3F7D;
+  --p2:#00C2A8;
+  --chaos:#FFD447;
+  --shadow:6px 6px 0 var(--line);
+  --shadow-sm:3px 3px 0 var(--line);
+  --accent:var(--p1);
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){}
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#120C28;
+    --card:#241A4D;
+    --card-2:#2E2261;
+    --line:#000000;
+    --text:#F3EDFF;
+    --muted:#A79BD6;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#120C28; --card:#241A4D; --card-2:#2E2261; --line:#000000;
+  --text:#F3EDFF; --muted:#A79BD6;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--text);
+  font-family:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:16px;line-height:1.45;
+  overscroll-behavior:none;
+}
+h1,h2,h3,.display{font-family:"Bricolage Grotesque","Instrument Sans",sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--p2);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- shell ---------- */
+#app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.screen{flex:1;padding:18px 18px 104px;display:none;animation:pop .18s ease-out}
+.screen.on{display:block}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 18px 6px}
+.logo{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px;letter-spacing:-.04em}
+.logo span{color:var(--p1)}
+.logo span+span{color:var(--p2)}
+.pairchip{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--card);border:2px solid var(--line);
+  border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;box-shadow:var(--shadow-sm)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.live{background:var(--p2);box-shadow:0 0 0 0 var(--p2);animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,194,168,.6)}70%{box-shadow:0 0 0 7px rgba(0,194,168,0)}100%{box-shadow:0 0 0 0 rgba(0,194,168,0)}}
+
+nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);
+  background:var(--card);border-top:3px solid var(--line);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:40}
+nav button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;
+  font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:10px}
+nav button .ic{font-size:19px;line-height:1}
+nav button.on{color:var(--text)}
+nav button.on .ic{transform:translateY(-2px)}
+
+/* ---------- pieces ---------- */
+.slab{background:var(--card);border:3px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.slab.flat{box-shadow:none}
+.btn{display:block;width:100%;background:var(--card);border:3px solid var(--line);border-radius:14px;padding:14px;
+  font-weight:600;box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translate(3px,3px);box-shadow:none}
+.btn.p1{background:var(--p1);color:#fff}
+.btn.p2{background:var(--p2);color:#06221E}
+.btn.ghost{background:transparent;box-shadow:none;border-width:2px}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.muted{color:var(--muted)}
+.tiny{font-size:12px}
+.pill{display:inline-block;border:2px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;background:var(--card-2)}
+input,textarea,select{width:100%;font:inherit;padding:12px;border:3px solid var(--line);border-radius:12px;background:var(--card);color:var(--text)}
+label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin:0 0 5px 2px}
+
+/* ---------- home ---------- */
+.xpbar{height:14px;border:3px solid var(--line);border-radius:999px;background:var(--card);overflow:hidden}
+.xpfill{height:100%;background:linear-gradient(90deg,var(--p1),var(--p2));width:0;transition:width .5s cubic-bezier(.2,.9,.3,1)}
+.bigbtn{width:100%;border:4px solid var(--line);border-radius:26px;background:var(--card);box-shadow:8px 8px 0 var(--line);
+  padding:26px 20px;cursor:pointer;text-align:left;position:relative;overflow:hidden;transition:transform .09s,box-shadow .09s}
+.bigbtn:active{transform:translate(5px,5px);box-shadow:3px 3px 0 var(--line)}
+.bigbtn .seam{position:absolute;inset:0;background:linear-gradient(120deg,var(--p1) 0 50%,var(--p2) 50% 100%);opacity:.14}
+.bigbtn h2{font-size:30px;position:relative;margin:0 0 6px}
+.bigbtn p{position:relative;margin:0;font-size:13px;font-weight:600;color:var(--muted)}
+.challenge{border:4px solid var(--line);border-radius:22px;background:var(--card);box-shadow:var(--shadow);padding:20px;margin-top:14px}
+.challenge h3{font-size:24px;margin:8px 0 10px}
+.chaosbtn{width:100%;border:4px solid var(--line);border-radius:20px;background:var(--chaos);color:#2A1E00;
+  box-shadow:6px 6px 0 var(--line);padding:16px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;cursor:pointer}
+.chaosbtn:active{transform:translate(4px,4px);box-shadow:2px 2px 0 var(--line)}
+
+/* chaos takeover */
+#chaos{position:fixed;inset:0;z-index:90;background:var(--chaos);color:#241800;display:none;
+  flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px;gap:14px}
+#chaos.on{display:flex}
+#chaos h1{font-size:clamp(38px,13vw,72px);margin:0}
+#chaos .cd{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:64px}
+.shake{animation:shake .5s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+
+/* ---------- grids ---------- */
+.gamegrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.gamecard{border:3px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow-sm);padding:14px;
+  cursor:pointer;text-align:left;min-height:104px;display:flex;flex-direction:column;justify-content:space-between}
+.gamecard .em{font-size:26px}
+.gamecard b{font-family:"Bricolage Grotesque",sans-serif;font-size:16px;font-weight:800}
+.gamecard:active{transform:translate(3px,3px);box-shadow:none}
+
+/* ---------- wall ---------- */
+.timeline{position:relative;margin-top:14px;padding-left:22px}
+.timeline:before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:3px;background:var(--line);border-radius:2px}
+.entry{position:relative;margin-bottom:14px}
+.entry:before{content:"";position:absolute;left:-22px;top:14px;width:15px;height:15px;border-radius:50%;background:var(--p1);border:3px solid var(--line)}
+.entry.by2:before{background:var(--p2)}
+.entry img{width:100%;border-radius:10px;border:3px solid var(--line);display:block;margin-top:8px}
+.datehead{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:13px;color:var(--muted);margin:16px 0 6px}
+
+/* ---------- chat ---------- */
+#chatlist{display:flex;flex-direction:column;gap:8px;min-height:40vh}
+.msg{max-width:80%;padding:9px 13px;border:3px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow-sm);word-break:break-word}
+.msg.mine{align-self:flex-end;background:var(--accent);color:#fff}
+.msg .who{font-size:10px;font-weight:700;opacity:.75;display:block}
+.composer{position:sticky;bottom:96px;display:flex;gap:8px;margin-top:12px}
+.composer input{flex:1}
+.composer button{width:56px;flex:none}
+
+/* ---------- games ---------- */
+#stage{position:fixed;inset:0;z-index:80;background:var(--paper);display:none;flex-direction:column;
+  max-width:520px;margin:0 auto;padding:16px;overflow:auto}
+#stage.on{display:flex}
+.stagehead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.stagehead h2{font-size:22px;margin:0;flex:1}
+.x{width:42px;height:42px;flex:none;border-radius:12px;border:3px solid var(--line);background:var(--card);
+  box-shadow:var(--shadow-sm);font-size:18px;cursor:pointer}
+.tapzone{flex:1;border:4px solid var(--line);border-radius:18px;display:flex;align-items:center;justify-content:center;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px;user-select:none;cursor:pointer;min-height:180px}
+.memgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.memcard{aspect-ratio:1;border:3px solid var(--line);border-radius:12px;background:var(--card-2);font-size:26px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.memcard.up{background:var(--card)}
+.memcard.gone{opacity:.25;pointer-events:none}
+canvas{width:100%;border:3px solid var(--line);border-radius:14px;background:#fff;touch-action:none;display:block}
+.scorebar{display:flex;gap:10px;margin-bottom:10px}
+.scorebar div{flex:1;border:3px solid var(--line);border-radius:12px;padding:8px;text-align:center;background:var(--card)}
+.scorebar b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:22px}
+.opt{margin-top:8px}
+
+/* ---------- proof & timers ---------- */
+.timerbar{height:12px;border:3px solid var(--line);border-radius:999px;background:var(--card);overflow:hidden;margin:12px 0 6px}
+.timerfill{height:100%;background:var(--p2);width:100%;transition:width .95s linear}
+.timerfill.warn{background:var(--chaos)}
+.timerfill.dead{background:var(--p1)}
+.clock{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:30px;text-align:center}
+.meter{height:24px;border:3px solid var(--line);border-radius:999px;background:var(--card);overflow:hidden}
+.meterfill{height:100%;width:0;background:linear-gradient(90deg,var(--p2),var(--chaos),var(--p1))}
+.proofbox{margin-top:12px;border:3px dashed var(--line);border-radius:16px;padding:14px;background:var(--card-2)}
+.proofbox h4{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px;margin:0 0 8px}
+.tapbig{width:100%;min-height:130px;border:4px solid var(--line);border-radius:20px;background:var(--p1);color:#fff;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:32px;cursor:pointer;box-shadow:var(--shadow)}
+.tapbig:active{transform:translate(4px,4px);box-shadow:none}
+.codebig{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:32px;letter-spacing:.1em;
+  border:4px dashed var(--line);border-radius:16px;padding:16px 10px;text-align:center;background:var(--card-2)}
+.fail{animation:flashred .7s}
+@keyframes flashred{0%,100%{background:var(--paper)}45%{background:var(--p1)}}
+.won{animation:flashgood .7s}
+@keyframes flashgood{0%,100%{background:var(--paper)}45%{background:var(--p2)}}
+#minitimer{position:fixed;right:12px;bottom:112px;z-index:85;display:none;align-items:center;gap:9px;
+  background:var(--ink);color:#fff;border:3px solid var(--line);border-radius:999px;padding:9px 15px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;box-shadow:var(--shadow-sm);cursor:pointer}
+#minitimer.on{display:flex}
+#minitimer i{width:9px;height:9px;border-radius:50%;background:var(--chaos);display:block}
+.avatar{border-radius:50%;border:3px solid var(--line);object-fit:cover;background:var(--card-2);flex:none;display:flex;align-items:center;justify-content:center;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;overflow:hidden}
+.avpick{position:relative;width:84px;height:84px;margin:0 auto 4px;cursor:pointer}
+.avpick .avatar{width:84px;height:84px;font-size:30px}
+.avpick .edit{position:absolute;right:-4px;bottom:-4px;width:30px;height:30px;border-radius:50%;background:var(--ink);
+  color:#fff;border:3px solid var(--paper);display:flex;align-items:center;justify-content:center;font-size:14px}
+.msg .whorow{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.msg .avatar{width:18px;height:18px;font-size:9px;border-width:2px}
+.streakchip{display:inline-flex;align-items:center;gap:5px;background:var(--card-2);border:2px solid var(--line);
+  border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+.modrow{display:flex;align-items:center;gap:10px;border:2px solid var(--line);border-radius:12px;padding:9px 11px;margin-bottom:8px;background:var(--card)}
+.modrow .swatch{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none}
+.modrow b{font-size:14px;flex:1}
+.modrow .del{flex:none;width:28px;height:28px;border-radius:8px;border:2px solid var(--line);background:var(--card);cursor:pointer}
+.switch{position:relative;width:46px;height:26px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:var(--card-2);border:2px solid var(--line);border-radius:999px;cursor:pointer;transition:.15s}
+.slider:before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--card);border:2px solid var(--line);border-radius:50%;transition:.15s}
+.switch input:checked+.slider{background:var(--p2)}
+.switch input:checked+.slider:before{transform:translateX(18px)}
+.cheatrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--card-2)}
+.cheatrow:last-child{border-bottom:0}
+.cheatrow div{flex:1}
+.cheatrow b{display:block;font-size:14px}
+.perow{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.perow input[type=text]{flex:2}
+.perow input[type=number]{flex:0 0 62px}
+.perow select{flex:0 0 100px}
+.perow button{flex:0 0 30px;width:30px;height:30px;border-radius:8px;border:2px solid var(--line);background:var(--card)}
+.codearea{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;resize:vertical}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:112px;z-index:95;background:var(--ink);color:#fff;
+  border:3px solid var(--line);border-radius:999px;padding:9px 16px;font-weight:600;font-size:14px;box-shadow:var(--shadow-sm)}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="logo"><span>DUO</span><span>BOX</span></div>
+    <div class="pairchip"><span id="chipav"></span><i class="dot" id="livedot"></i><span id="pairlabel">solo</span></div>
+  </div>
+
+  <!-- ONBOARDING -->
+  <section class="screen on" id="s-start">
+    <div class="slab" style="margin-top:8px">
+      <h2 style="font-size:28px;margin:0 0 6px">Two people. One box.</h2>
+      <p class="muted" style="margin:0 0 18px">Pick a name, a photo and a colour, then invite your other half.</p>
+      <div class="avpick" id="avpick"><div class="avatar" id="avpreview">?</div><div class="edit">📷</div></div>
+      <input type="file" id="avfile" accept="image/*" class="hide">
+      <label for="uname">Your username</label>
+      <input id="uname" maxlength="16" placeholder="e.g. noodle">
+      <div style="height:12px"></div>
+      <label>Your colour</label>
+      <div class="row">
+        <button class="btn p1" id="pick1">Pink</button>
+        <button class="btn p2" id="pick2">Teal</button>
+      </div>
+      <div style="height:18px"></div>
+      <div class="row">
+        <button class="btn" id="makebox" style="background:var(--ink);color:#fff">Start a box</button>
+        <button class="btn ghost" id="joinbox">Join with a code</button>
+      </div>
+      <div id="joinwrap" class="hide" style="margin-top:16px">
+        <label for="pcode">Invite code from your friend</label>
+        <input id="pcode" maxlength="9" placeholder="e.g. 4KQ-7ZB" style="text-transform:uppercase">
+        <div style="height:10px"></div>
+        <button class="btn p2" id="joingo">Join the box</button>
+      </div>
+    </div>
+
+    <div id="invitewrap" class="slab hide" style="margin-top:14px">
+      <b class="display" style="font-size:18px">Your invite code</b>
+      <p class="tiny muted" style="margin:4px 0 12px">Send this to your friend. They open DUOBOX, tap “Join with a code” and type it in.</p>
+      <div class="codebig" id="codeout">—</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" id="copycode">Copy code</button>
+        <button class="btn p1" id="sharecode">Share link</button>
+      </div>
+      <div style="height:10px"></div>
+      <button class="btn" id="enterbox" style="background:var(--ink);color:#fff">Enter the box</button>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section class="screen" id="s-home">
+    <div class="slab flat" style="border:0;padding:0;margin-bottom:14px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+        <b class="display" style="font-size:15px" id="lvlname">Level 1 · Strangers who text a lot</b>
+        <span class="streakchip" id="streakchip" style="margin-left:auto">🔥 0</span>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+        <span class="tiny muted" id="xptext">0 / 100 XP</span>
+      </div>
+      <div class="xpbar"><div class="xpfill" id="xpfill"></div></div>
+    </div>
+
+    <button class="bigbtn" id="rollbtn">
+      <div class="seam"></div>
+      <h2>What should we do?</h2>
+      <p>Tap for something to do right now</p>
+    </button>
+
+    <div id="challengebox"></div>
+
+    <div style="height:14px"></div>
+    <button class="chaosbtn" id="chaosgo">MELTDOWN</button>
+    <p class="tiny muted" style="text-align:center;margin:8px 0 0" id="chaoshint">Both of you press within 5 seconds.</p>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="s-play">
+    <h2 style="font-size:26px;margin:6px 0 2px">Game mode</h2>
+    <p class="tiny muted" style="margin:0">Pass-the-phone games. Scores feed your Friendship XP.</p>
+    <div class="gamegrid" id="gamegrid"></div>
+  </section>
+
+  <!-- WALL -->
+  <section class="screen" id="s-wall">
+    <h2 style="font-size:26px;margin:6px 0 2px">Memory wall</h2>
+    <p class="tiny muted" style="margin:0 0 12px">Everything you save lands on the timeline by date.</p>
+    <div class="slab">
+      <div class="row" style="margin-bottom:10px">
+        <select id="wtype">
+          <option value="note">Message</option>
+          <option value="joke">Inside joke</option>
+          <option value="date">Date that matters</option>
+          <option value="voice">Voice clip note</option>
+        </select>
+        <button class="btn ghost" id="wphoto" style="flex:0 0 74px">📷</button>
+      </div>
+      <textarea id="wtext" rows="2" placeholder="What happened?"></textarea>
+      <div id="wpreview"></div>
+      <div style="height:10px"></div>
+      <button class="btn p1" id="wsave">Save to the wall</button>
+    </div>
+    <input type="file" id="wfile" accept="image/*" class="hide">
+    <div class="timeline" id="timeline"></div>
+  </section>
+
+  <!-- CHAT -->
+  <section class="screen" id="s-chat">
+    <h2 style="font-size:26px;margin:6px 0 10px">Chat</h2>
+    <div id="chatlist"></div>
+    <div class="composer">
+      <input id="chatinput" placeholder="Say something" maxlength="300">
+      <button class="btn p2" id="chatsend">➤</button>
+    </div>
+  </section>
+
+  <!-- YOU -->
+  <section class="screen" id="s-you">
+    <h2 style="font-size:26px;margin:6px 0 12px">You two</h2>
+    <div class="slab" style="margin-bottom:12px">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="avpick" style="width:52px;height:52px;margin:0" id="avpick2"><div class="avatar" id="avme" style="width:52px;height:52px;font-size:18px"></div><div class="edit" style="width:22px;height:22px;font-size:11px">📷</div></div>
+        <input type="file" id="avfile2" accept="image/*" class="hide">
+        <div>
+          <b class="display" style="font-size:20px" id="youname">you</b>
+          <div class="tiny muted" id="youtitle">no title yet</div>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <label for="themesel">Profile theme</label>
+      <select id="themesel"></select>
+      <div style="height:10px"></div>
+      <label for="titlesel">Title</label>
+      <select id="titlesel"></select>
+    </div>
+    <div class="slab" style="margin-bottom:12px">
+      <b class="display" style="font-size:17px">Invite code</b>
+      <p class="tiny muted" style="margin:4px 0 10px" id="invstatus">Nobody else is in the box yet.</p>
+      <div class="codebig" id="youcode" style="font-size:26px">—</div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="youcopy">Copy</button>
+        <button class="btn ghost" id="youshare">Share</button>
+      </div>
+    </div>
+    <div class="slab" style="margin-bottom:12px">
+      <b class="display" style="font-size:17px">Badges</b>
+      <div id="badges" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+    </div>
+    <div class="slab" style="margin-bottom:12px">
+      <b class="display" style="font-size:17px">Unlocks</b>
+      <div id="unlocks" style="margin-top:8px"></div>
+    </div>
+    <button class="btn ghost" id="resetbtn">Leave this pair</button>
+  </section>
+
+  <!-- MODS -->
+  <section class="screen" id="s-mods">
+    <h2 style="font-size:26px;margin:6px 0 2px">Mods & packs</h2>
+    <p class="tiny muted" style="margin:0 0 14px">Private to this device. Build your own challenges, colours, titles — and bend the rules if you want.</p>
+
+    <div class="slab" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <b class="display" style="font-size:17px">Your packs</b>
+        <button class="btn ghost" id="newpack" style="flex:none;width:auto;padding:8px 12px;margin-left:auto">+ New pack</button>
+      </div>
+      <p class="tiny muted" style="margin:6px 0 10px">Classic is built in and always on. Your own packs add extra challenges into the roll.</p>
+      <div id="packlist"></div>
+    </div>
+
+    <div class="slab hide" id="packeditor" style="margin-bottom:14px">
+      <b class="display" style="font-size:16px" id="petitle">New pack</b>
+      <div style="height:8px"></div>
+      <label for="pename">Pack name</label>
+      <input id="pename" maxlength="24" placeholder="e.g. Unhinged pack">
+      <div style="height:10px"></div>
+      <div id="perows"></div>
+      <button class="btn ghost" id="perow" style="margin-top:8px">+ Add a challenge</button>
+      <div class="row" style="margin-top:12px">
+        <button class="btn p2" id="pesave">Save pack</button>
+        <button class="btn ghost" id="pecancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="slab" style="margin-bottom:14px">
+      <b class="display" style="font-size:17px">Custom themes</b>
+      <p class="tiny muted" style="margin:6px 0 10px">Pick your own two-colour palette. Shows up in the theme picker on the You tab.</p>
+      <div id="themelist" style="margin-bottom:10px"></div>
+      <div class="row">
+        <input id="thname" maxlength="16" placeholder="Theme name">
+        <input id="thc1" type="color" value="#ff3f7d" style="padding:4px;height:48px">
+        <input id="thc2" type="color" value="#00c2a8" style="padding:4px;height:48px">
+      </div>
+      <div style="height:8px"></div>
+      <button class="btn ghost" id="thadd">+ Add theme</button>
+    </div>
+
+    <div class="slab" style="margin-bottom:14px">
+      <b class="display" style="font-size:17px">Custom titles</b>
+      <div id="titlelist" style="margin-bottom:10px"></div>
+      <div class="row">
+        <input id="ttname" maxlength="30" placeholder="e.g. Unbothered menace">
+        <button class="btn ghost" id="ttadd" style="flex:0 0 90px">+ Add</button>
+      </div>
+    </div>
+
+    <div class="slab">
+      <b class="display" style="font-size:17px">Cheats</b>
+      <p class="tiny muted" style="margin:6px 0 10px">You allowed it — these only affect your own device.</p>
+      <div id="cheatlist"></div>
+    </div>
+
+    <div style="height:14px"></div>
+    <div class="slab" style="border-color:var(--p1)">
+      <b class="display" style="font-size:17px">Code mods</b>
+      <p class="tiny muted" style="margin:6px 0 10px">Real CSS and JavaScript, running straight in your copy of the app. This can break things — that's the deal. <b>Reset code mods</b> always gets you back.</p>
+
+      <label for="modcss">CSS mod</label>
+      <textarea id="modcss" rows="5" class="codearea" placeholder="/* e.g. */
+.bigbtn h2{ font-size:40px; }
+.chaosbtn{ background:#000; color:#0f0; }"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn p2" id="modcssapply">Apply CSS</button>
+      </div>
+
+      <div style="height:16px"></div>
+      <label for="modjs">JS mod</label>
+      <textarea id="modjs" rows="7" class="codearea" placeholder="// You get a DUOBOX object. Try:
+// DUOBOX.addXp(100,'game')
+// DUOBOX.toast('hacked the box')
+// DUOBOX.state.title = 'Menace v2'
+// DUOBOX.CHALLENGES.push({t:'Do a backflip',xp:99,s:30,proof:'none',p:0})"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn p2" id="modjsrun">Run now</button>
+        <button class="btn ghost" id="modjssave">Save only</button>
+      </div>
+
+      <div class="cheatrow" style="margin-top:14px">
+        <div><b>Auto-run on open</b><span class="tiny muted">Runs your saved JS mod every time you open DUOBOX. Leave off until you trust it.</span></div>
+        <label class="switch"><input type="checkbox" id="modauto"><span class="slider"></span></label>
+      </div>
+
+      <p class="tiny muted" id="moderr" style="min-height:16px;margin:8px 0 0"></p>
+      <button class="btn ghost" id="modreset" style="margin-top:6px;border-color:var(--p1);color:var(--p1)">Reset code mods</button>
+    </div>
+
+    <div style="height:14px"></div>
+    <div class="slab" style="border-color:var(--ink)">
+      <b class="display" style="font-size:17px">Full source</b>
+      <p class="tiny muted" style="margin:6px 0 10px">The actual HTML, CSS and JS running this app right now — main.js and all, in one file. Edit anything and rebuild the whole thing.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn ghost" id="srcload">Load current source</button>
+        <button class="btn ghost" id="srccopy">Copy</button>
+      </div>
+      <textarea id="srcarea" rows="12" class="codearea" placeholder="Tap &quot;Load current source&quot; to pull in the real file."></textarea>
+      <p class="tiny muted" id="srcerr" style="min-height:16px;margin:8px 0 0;color:var(--p1)"></p>
+      <div class="row">
+        <button class="btn p1" id="srcapply">Apply & rebuild</button>
+        <button class="btn ghost" id="srcrevert">Revert to built-in</button>
+      </div>
+      <p class="tiny muted" style="margin-top:10px">Bad syntax gets caught before anything runs — Apply just refuses and tells you why. A deeper crash fixes itself the next time you open the app.</p>
+    </div>
+  </section>
+
+  <nav id="nav" class="hide">
+    <button data-go="home" class="on"><span class="ic">🎲</span>Do</button>
+    <button data-go="play"><span class="ic">🎮</span>Play</button>
+    <button data-go="wall"><span class="ic">🧷</span>Wall</button>
+    <button data-go="chat"><span class="ic">💬</span>Chat</button>
+    <button data-go="you"><span class="ic">🏆</span>You</button>
+    <button data-go="mods"><span class="ic">🧩</span>Mods</button>
+  </nav>
+</div>
+
+<div id="chaos">
+  <div class="pill" style="background:#241800;color:var(--chaos);border-color:#241800">MELTDOWN</div>
+  <h1 id="chaostext">GO</h1>
+  <div class="cd" id="chaoscd">60</div>
+  <div id="chaosproof" style="width:100%;max-width:340px"></div>
+</div>
+
+<div id="minitimer"><i></i><span id="minitext">0:00</span></div>
+
+<div id="stage"></div>
+
+<script>
+const LIVE_SOURCE = document.documentElement.outerHTML;
+/* ============================ data ============================ */
+/* proof: none | voice | photo | taps | draw | shake | hold */
+const CHALLENGES = [
+  {t:"Take the worst selfie physically possible", p:0, xp:10, s:60, proof:"photo"},
+  {t:"Find something in your room starting with B and photograph it", p:0, xp:10, s:30, proof:"photo"},
+  {t:"Draw the other person from memory", p:0, xp:10, s:30, proof:"draw"},
+  {t:"Scream the other person's name as loudly as you dare", p:0, xp:10, s:20, proof:"voice"},
+  {t:"Say every word you can think of that rhymes with your own name. Out loud, no stopping", p:0, xp:15, s:30, proof:"voice"},
+  {t:"Argue that the nearest object is alive. Out loud. Convincingly", p:0, xp:10, s:45, proof:"voice"},
+  {t:"Make a character together: one names them, one draws them", p:0, xp:15, s:90, proof:"draw"},
+  {t:"Tap out the rhythm of a song you both know", p:0, xp:10, s:20, proof:"taps"},
+  {t:"Shake the phone like you're trying to fix it", p:0, xp:10, s:15, proof:"shake"},
+  {t:"Photograph the most embarrassing thing in your room", p:0, xp:10, s:45, proof:"photo"},
+  {t:"Do your worst impression of each other. Loudly", p:0, xp:15, s:30, proof:"voice"},
+  {t:"Draw your friendship as one object", p:0, xp:10, s:45, proof:"draw"},
+  {t:"Hold the button and hold eye contact at the same time", p:0, xp:10, s:20, proof:"hold"},
+  {t:"Name 10 things you both hate. Say them out loud", p:0, xp:15, s:60, proof:"voice"},
+  {t:"Invent a secret handshake and photograph the final pose", p:1, xp:20, s:90, proof:"photo"},
+  {t:"Record a podcast intro for a show you'd never make", p:1, xp:20, s:30, proof:"voice"},
+  {t:"Reenact how you met, badly", p:1, xp:20, s:60, proof:"voice"},
+  {t:"Draw what you think the other person is doing right now", p:1, xp:20, s:45, proof:"draw"},
+  {t:"Tap once for every year you've known each other. Then double it", p:1, xp:20, s:20, proof:"taps"},
+  {t:"Read each other's horoscope for tomorrow. Make it up", p:1, xp:20, s:45, proof:"voice"},
+  {t:"Photograph something you both owned as kids", p:1, xp:20, s:90, proof:"photo"},
+  {t:"Design your duo's logo. Both draw, both vote", p:2, xp:25, s:60, proof:"draw"},
+  {t:"Tell one story about the other they've never heard you tell", p:2, xp:25, s:90, proof:"voice"},
+  {t:"Narrate your friendship's origin myth. Include a dragon", p:2, xp:30, s:90, proof:"voice"},
+  {t:"Make a rule that binds you both forever. Photograph it written down", p:2, xp:30, s:120, proof:"photo"}
+];
+const CHAOS = [
+  {t:"Both draw the same object without seeing each other's drawing", s:60, proof:"draw"},
+  {t:"Scream. Just scream. Both of you", s:20, proof:"voice"},
+  {t:"Build a tower from whatever is in arm's reach and photograph it", s:60, proof:"photo"},
+  {t:"Compliment each other non-stop. No repeats, no silence", s:30, proof:"voice"},
+  {t:"Swap accents. Stay in character or the round dies", s:45, proof:"voice"},
+  {t:"Find the ugliest object near you and photograph it", s:45, proof:"photo"},
+  {t:"Draw the other person as an animal", s:60, proof:"draw"},
+  {t:"Shake the phone until it begs you to stop", s:20, proof:"shake"},
+  {t:"Make one sound each and guess what the other is imitating", s:45, proof:"voice"},
+  {t:"Tap as fast as humanly possible. Both of you. Go", s:15, proof:"taps"}
+];
+const TRIVIA = [
+  {q:"How many hearts does an octopus have?",a:["3","1","5","8"],c:0},
+  {q:"Which planet spins on its side?",a:["Uranus","Mars","Venus","Neptune"],c:0},
+  {q:"Bananas are technically…",a:["Berries","Nuts","Vegetables","Melons"],c:0},
+  {q:"What colour is a polar bear's skin?",a:["Black","White","Pink","Grey"],c:0},
+  {q:"A group of crows is called a…",a:["Murder","Pack","Flock","Choir"],c:0},
+  {q:"How long is a day on Venus vs a year?",a:["Longer","Shorter","Same","Half"],c:0},
+  {q:"Honey never…",a:["Spoils","Freezes","Dissolves","Crystallises"],c:0},
+  {q:"Sharks existed before…",a:["Trees","Fish","Insects","Water"],c:0},
+  {q:"What's the only food that never rots?",a:["Honey","Rice","Salt","Sugar"],c:0},
+  {q:"Which is heavier: a kilo of steel or feathers?",a:["Same","Steel","Feathers","Depends"],c:0},
+  {q:"Wombat poop is shaped like a…",a:["Cube","Star","Sphere","Heart"],c:0},
+  {q:"How many bones does a shark have?",a:["Zero","206","12","40"],c:0}
+];
+const KNOWQ = [
+  "What would they order at 2am?","What's their most irrational fear?","Which app do they open first?",
+  "What would they never admit out loud?","What's their comfort show?","What would they spend £100 on right now?",
+  "Which of you cries at films?","What's their worst habit?","Who would survive longer in a horror film?",
+  "What's their toxic trait?","Which animal are they?","What did they wear the last time you met?",
+  "Who texts first, always?","What's their go-to karaoke song?"
+];
+/* Each sound is a recipe for the noise/tone engine below (no external audio allowed
+   in a published page, so these are physically modelled rather than sampled). */
+const SOUNDS = [
+  {n:"Doorbell",   make:playDoorbell},
+  {n:"Dog bark",   make:playBark},
+  {n:"Cat meow",   make:playMeow},
+  {n:"Rain",       make:playRain},
+  {n:"Applause",   make:playApplause},
+  {n:"Camera shutter", make:playShutter},
+  {n:"Phone buzz", make:playBuzz},
+  {n:"Footsteps",  make:playFootsteps}
+];
+const THEMES = {
+  bubblegum:{name:"Bubblegum", lvl:0, p1:"#FF3F7D", p2:"#00C2A8"},
+  toxic:    {name:"Toxic",     lvl:2, p1:"#B4FF39", p2:"#FF2ECC"},
+  sunset:   {name:"Sunset",    lvl:3, p1:"#FF7A18", p2:"#7B2FF7"},
+  deepsea:  {name:"Deep sea",  lvl:5, p1:"#2E6BFF", p2:"#00E5FF"},
+  gremlin:  {name:"Gremlin",   lvl:7, p1:"#7CFF4F", p2:"#FF4F4F"}
+};
+const TITLES = [
+  {t:"Freshly paired", lvl:0},{t:"Menace, certified", lvl:2},{t:"Chaos coordinator", lvl:3},
+  {t:"Emergency contact", lvl:4},{t:"Two halves, one brain cell", lvl:6},{t:"Legally inseparable", lvl:9}
+];
+const BADGES = [
+  {id:"first",  em:"🥚", n:"First challenge",  test:s=>s.done>=1},
+  {id:"ten",    em:"🔟", n:"Ten done",         test:s=>s.done>=10},
+  {id:"chaos1", em:"💀", n:"Survived chaos",   test:s=>s.chaos>=1},
+  {id:"chaos5", em:"🌪️", n:"Chaos regular",    test:s=>s.chaos>=5},
+  {id:"wall",   em:"🧷", n:"Wall started",     test:s=>s.wall>=1},
+  {id:"wall10", em:"📼", n:"Ten memories",     test:s=>s.wall>=10},
+  {id:"gamer",  em:"🎮", n:"Played a game",    test:s=>s.games>=1},
+  {id:"lvl5",   em:"🏆", n:"Level 5",          test:s=>lvlOf(s.xp)>=5}
+];
+const LEVELNAMES=["Strangers who text a lot","Acquaintances, upgraded","Regulars","Trouble, mild","Trouble, medium",
+  "Trouble, severe","Shared brain cell","Unlicensed duo","Folklore","Menace of legend"];
+
+/* ============================ state ============================ */
+const LS="duobox.v1";
+let S = {me:{id:null,name:"",color:"p1",avatar:""}, code:"", xp:0, done:0, chaos:0, games:0,
+         wall:[], chat:[], theme:"bubblegum", title:"Freshly paired", streak:0, lastDay:"", roster:{},
+         mods:{packs:[],themes:[],titles:[],cheats:{noTimers:false,noPenalty:false,doubleXp:false,unlockAll:false,instantMeltdown:false},
+               customCss:"",customJs:"",codeModsAuto:false}};
+let db=null, room=null, live=false, peerName=null, chaosPress=0, unsub=[], voiceOffHandler=null;
+
+function lvlOf(xp){return Math.floor(xp/100)+1}
+function save(){ localStorage.setItem(LS, JSON.stringify(S)); }
+function load(){ try{ const r=localStorage.getItem(LS); if(r) S=Object.assign(S,JSON.parse(r)); }catch(e){}
+  S.mods = S.mods||{}; S.mods.packs=S.mods.packs||[]; S.mods.themes=S.mods.themes||[]; S.mods.titles=S.mods.titles||[];
+  S.mods.cheats = Object.assign({noTimers:false,noPenalty:false,doubleXp:false,unlockAll:false,instantMeltdown:false}, S.mods.cheats||{});
+  S.mods.customCss = S.mods.customCss||""; S.mods.customJs = S.mods.customJs||""; S.mods.codeModsAuto = !!S.mods.codeModsAuto;
+}
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function initials(n){ return (n||"?").trim().slice(0,1).toUpperCase(); }
+function avatarHTML(person,size){
+  const bg = person.color==="p2" ? "var(--p2)" : "var(--p1)";
+  if(person.avatar) return `<img class="avatar" src="${person.avatar}" style="width:${size}px;height:${size}px">`;
+  return `<div class="avatar" style="width:${size}px;height:${size}px;background:${bg};color:#fff">${initials(person.name)}</div>`;
+}
+function wireAvatarPicker(pickEl,fileEl,onDone){
+  pickEl.onclick=()=>fileEl.click();
+  fileEl.onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const img=new Image(), rd=new FileReader();
+    rd.onload=()=>{ img.onload=()=>{
+      const s=Math.min(img.width,img.height), cv=document.createElement("canvas");
+      cv.width=200; cv.height=200;
+      const cx=cv.getContext("2d");
+      cx.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,200,200);
+      onDone(cv.toDataURL("image/jpeg",.82));
+    }; img.src=rd.result; };
+    rd.readAsDataURL(f);
+  };
+}
+function bumpStreak(){
+  const today=new Date().toDateString();
+  if(S.lastDay===today) return;
+  const y=new Date(Date.now()-86400000).toDateString();
+  S.streak = S.lastDay===y ? S.streak+1 : 1;
+  S.lastDay=today; save();
+}
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2200);
+}
+const $ = s=>document.querySelector(s);
+
+/* ============================ cloud ============================ */
+async function connect(){
+  if(!window.claude || typeof window.claude.use!=="function") return;
+  try{ db = await claude.use("db"); }catch(e){ db=null; }
+  try{ room = await claude.use("room"); }catch(e){ room=null; }
+  if(room){
+    room.presence({name:S.me.name,color:S.me.color,code:S.code});
+    room.onPeers(peers=>{
+      const others=(peers||[]).filter(p=>p.id!==undefined && p.name && p.name!==S.me.name && p.code===S.code);
+      live = others.length>0; peerName = others[0]?.name || null;
+      $("#livedot").className = "dot"+(live?" live":"");
+      $("#pairlabel").textContent = live? (peerName+" is here") : (S.code||"solo");
+      $("#chaoshint").textContent = live? "Both of you press within 5 seconds." : "No one else online — press twice to run it solo.";
+    });
+    room.on("chaos", d=>{ if(d && d.code===S.code && d.by!==S.me.id) partnerChaos(); });
+    room.on("chat", d=>{ if(d && d.code===S.code && d.by!==S.me.id){ S.chat.push(d.m); save(); renderChat(); } });
+    room.on("voicegame", d=>{ if(voiceOffHandler) voiceOffHandler(d); });
+  }
+  if(db) syncDb();
+}
+async function syncDb(){
+  if(!db||!S.code) return;
+  try{
+    const pd = db.doc("duobox_pairs/"+S.code);
+    pd.onSnapshot(d=>{
+      const v=d&&d.data?d.data():d;
+      if(v && typeof v.xp==="number" && v.xp>S.xp){ S.xp=v.xp; S.done=v.done||S.done; S.chaos=v.chaos||S.chaos; save(); renderHome(); }
+    });
+    const cq = db.collection("duobox_chat").where("code","==",S.code).orderBy("t").limit(200);
+    cq.onSnapshot(snap=>{
+      const rows=(snap.docs||snap||[]).map(d=>d.data?d.data():d).filter(Boolean);
+      if(rows.length){ S.chat=rows.sort((a,b)=>a.t-b.t); save(); renderChat(); }
+    });
+    const wq = db.collection("duobox_wall").where("code","==",S.code).orderBy("t").limit(300);
+    wq.onSnapshot(snap=>{
+      const rows=(snap.docs||snap||[]).map(d=>d.data?d.data():d).filter(Boolean);
+      if(rows.length){ S.wall=rows.sort((a,b)=>b.t-a.t); save(); renderWall(); }
+    });
+  }catch(e){}
+}
+function pushPair(){ if(db&&S.code){ try{ db.doc("duobox_pairs/"+S.code).set({xp:S.xp,done:S.done,chaos:S.chaos}); }catch(e){} } }
+function pushDoc(coll,obj){ if(db){ try{ db.collection(coll).doc(obj.id).set(obj); }catch(e){ try{ db.collection(coll).add(obj);}catch(e2){} } } }
+
+/* ============================ xp ============================ */
+function addXp(n,kind){
+  if(S.mods.cheats.doubleXp) n*=2;
+  const before=lvlOf(S.xp); S.xp+=n;
+  if(kind==="done") S.done++; if(kind==="chaos"){S.chaos++;S.done++;} if(kind==="game") S.games++;
+  save(); pushPair(); renderHome(); renderYou();
+  if(lvlOf(S.xp)>before){ toast("Level "+lvlOf(S.xp)+" unlocked 🎉"); uiSound("level"); }
+  else toast("+"+n+" XP");
+}
+
+/* ============================ screens ============================ */
+function go(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
+  $("#s-"+name).classList.add("on");
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.go===name));
+  if(name==="wall") renderWall(); if(name==="chat") renderChat(); if(name==="you") renderYou(); if(name==="mods") renderMods();
+}
+document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.go));
+
+/* ---------- onboarding ---------- */
+let pickColor="p1", pendingAvatar="";
+wireAvatarPicker($("#avpick"),$("#avfile"),d=>{ pendingAvatar=d; $("#avpreview").outerHTML=`<img class="avatar" id="avpreview" src="${d}" style="width:84px;height:84px">`; });
+$("#pick1").onclick=()=>{pickColor="p1";$("#pick1").style.outline="4px solid var(--line)";$("#pick2").style.outline="none";};
+$("#pick2").onclick=()=>{pickColor="p2";$("#pick2").style.outline="4px solid var(--line)";$("#pick1").style.outline="none";};
+function newCode(){
+  const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+  for(let i=0;i<6;i++) s+=A[Math.floor(Math.random()*A.length)];
+  return s.slice(0,3)+"-"+s.slice(3);
+}
+function inviteLink(code){ return location.origin+location.pathname+"#join="+encodeURIComponent(code); }
+function shareCode(code){
+  const text="Join my DUOBOX. Code: "+code;
+  if(navigator.share) navigator.share({title:"DUOBOX",text,url:inviteLink(code)}).catch(()=>{});
+  else copyText(inviteLink(code),"Invite link copied");
+}
+function copyText(t,msg){
+  if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>toast(t));
+  else toast(t);
+}
+function claimName(){
+  const n=$("#uname").value.trim();
+  if(!n){ toast("Pick a username first"); return null; }
+  S.me={id:S.me.id||uid(),name:n,color:pickColor,avatar:pendingAvatar||S.me.avatar||""};
+  return n;
+}
+$("#makebox").onclick=()=>{
+  if(!claimName()) return;
+  S.code=newCode(); save();
+  $("#joinwrap").classList.add("hide");
+  $("#invitewrap").classList.remove("hide");
+  $("#codeout").textContent=S.code;
+  $("#invitewrap").scrollIntoView({behavior:"smooth",block:"nearest"});
+};
+$("#joinbox").onclick=()=>{ $("#invitewrap").classList.add("hide"); $("#joinwrap").classList.remove("hide"); $("#pcode").focus(); };
+$("#joingo").onclick=()=>{
+  if(!claimName()) return;
+  const c=$("#pcode").value.trim().toUpperCase();
+  if(c.replace(/[^A-Z0-9]/g,"").length<6) return toast("That code looks short — check it again");
+  S.code=c; save(); boot();
+};
+$("#copycode").onclick=()=>copyText(S.code,"Code copied");
+$("#sharecode").onclick=()=>shareCode(S.code);
+$("#enterbox").onclick=()=>boot();
+$("#youcopy").onclick=()=>copyText(S.code,"Code copied");
+$("#youshare").onclick=()=>shareCode(S.code);
+$("#resetbtn").onclick=()=>{ if(confirm("Leave the pair? Your wall and XP stay on this device.")){ S.code=""; save(); location.reload(); } };
+
+/* ---------- home ---------- */
+function applyTheme(){
+  const custom=(S.mods.themes||[]).find(x=>x.id===S.theme);
+  const t=custom||THEMES[S.theme]||THEMES.bubblegum;
+  document.documentElement.style.setProperty("--p1",t.p1);
+  document.documentElement.style.setProperty("--p2",t.p2);
+  document.documentElement.style.setProperty("--accent", S.me.color==="p2"?t.p2:t.p1);
+}
+function renderHome(){
+  const lvl=lvlOf(S.xp), into=S.xp%100;
+  $("#xpfill").style.width=into+"%";
+  $("#xptext").textContent=S.xp+" XP · "+into+"/100 to level "+(lvl+1);
+  $("#lvlname").textContent="Level "+lvl+" · "+LEVELNAMES[Math.min(lvl-1,LEVELNAMES.length-1)];
+  $("#streakchip").textContent="🔥 "+(S.streak||0);
+}
+function pool(){
+  const lvl=lvlOf(S.xp), cap = S.mods.cheats.unlockAll? 2 : (lvl>=5?2:lvl>=3?1:0);
+  const custom=(S.mods.packs||[]).flatMap(p=>p.challenges);
+  return CHALLENGES.filter(c=>c.p<=cap).concat(custom);
+}
+const PROOFLABEL={voice:"voice detected",photo:"photo proof",taps:"tap counter",draw:"drawing detected",shake:"motion sensor",hold:"hold to confirm",none:"honour system"};
+$("#rollbtn").onclick=()=>{
+  const p=pool(); const c=p[Math.floor(Math.random()*p.length)];
+  const pen=Math.max(5,Math.round(c.xp*0.6));
+  $("#challengebox").innerHTML=`
+    <div class="challenge">
+      <span class="pill">+${c.xp} XP · ${PROOFLABEL[c.proof]}</span>
+      <h3>${esc(c.t)}</h3>
+      <p class="tiny muted" style="margin:0 0 12px">${fmt(c.s)} on the clock. Run out and it costs you ${pen} XP.</p>
+      <div class="row">
+        <button class="btn p2" id="cstart">Start the clock</button>
+        <button class="btn ghost" id="cskip">Reroll</button>
+      </div>
+    </div>`;
+  $("#cstart").onclick=()=>{ $("#challengebox").innerHTML=""; startTask({t:c.t,s:c.s,xp:c.xp,pen,proof:c.proof}); };
+  $("#cskip").onclick=()=>$("#rollbtn").click();
+};
+
+/* ---------- meltdown ---------- */
+function partnerChaos(){
+  if(Date.now()-chaosPress < 5000) fireChaos();
+  else toast((peerName||"Your friend")+" hit meltdown — press now!");
+}
+$("#chaosgo").onclick=()=>{
+  if(S.mods.cheats.instantMeltdown){ fireChaos(); return; }
+  const now=Date.now();
+  if(!live && now-chaosPress<5000){ fireChaos(); return; }
+  chaosPress=now;
+  if(room){ try{ room.emit("chaos",{by:S.me.id,code:S.code,t:now}); }catch(e){} }
+  $("#chaosgo").classList.add("shake");
+  setTimeout(()=>$("#chaosgo").classList.remove("shake"),500);
+  toast(live? "Waiting for "+(peerName||"them")+"…" : "Press again to run it solo");
+};
+function fireChaos(){
+  chaosPress=0;
+  const c=CHAOS[Math.floor(Math.random()*CHAOS.length)];
+  if(navigator.vibrate) navigator.vibrate([40,60,40]);
+  startTask({t:c.t,s:c.s,xp:40,pen:25,proof:c.proof,meltdown:true});
+}
+
+/* ============================ task engine ============================ */
+function fmt(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function loseXp(n,why){
+  if(S.mods.cheats.noPenalty){ toast(why+" (no penalty on)"); return; }
+  S.xp=Math.max(0,S.xp-n); save(); pushPair(); renderHome(); renderYou();
+  toast(why+" −"+n+" XP");
+}
+/* pop-out timer that survives leaving the app */
+let pipWin=null;
+async function openPip(text){
+  try{
+    if(!window.documentPictureInPicture) return false;
+    pipWin=await documentPictureInPicture.requestWindow({width:280,height:190});
+    const d=pipWin.document;
+    d.body.style.cssText="margin:0;height:100%;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#191134;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:16px;box-sizing:border-box";
+    d.body.innerHTML='<div style="font-size:11px;letter-spacing:.18em;opacity:.6">DUOBOX</div>'+
+      '<div id="p" style="font-size:13px;line-height:1.25;opacity:.9"></div>'+
+      '<div id="c" style="font-size:52px;font-weight:800;letter-spacing:-.02em">--</div>';
+    d.getElementById("p").textContent=text;
+    pipWin.addEventListener("pagehide",()=>{pipWin=null});
+    return true;
+  }catch(e){ return false; }
+}
+function pipTick(left,inf){
+  if(!pipWin) return;
+  const c=pipWin.document.getElementById("c");
+  if(c){ c.textContent= inf? "∞" : fmt(left); c.style.color = (!inf && left<=10) ? "#FFD447" : "#fff"; }
+  if(pipWin.document.body) pipWin.document.body.style.background = (!inf && left<=5) ? "#3A0F2A" : "#191134";
+}
+function closePip(){ try{ pipWin && pipWin.close(); }catch(e){} pipWin=null; }
+let wakeLock=null;
+async function keepAwake(on){
+  try{
+    if(on && "wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen");
+    else if(wakeLock){ wakeLock.release(); wakeLock=null; }
+  }catch(e){}
+}
+let activeTask=null, leftAt=0;
+document.addEventListener("visibilitychange",()=>{
+  if(!activeTask) return;
+  if(document.hidden){ leftAt=Date.now(); }
+  else if(leftAt){ const g=Math.round((Date.now()-leftAt)/1000); leftAt=0; document.title="DUOBOX";
+    if(g>2) toast("You were gone "+g+"s. Clock never stopped."); }
+});
+
+function startTask(cfg){
+  if(activeTask) return;
+  const meltdown=!!cfg.meltdown;
+  let left=cfg.s, settled=false, cleanupProof=()=>{};
+  activeTask=true;
+  keepAwake(true);
+  openPip(cfg.t);
+  $("#minitimer").classList.add("on");
+
+  let host;
+  if(meltdown){
+    $("#chaostext").textContent=cfg.t;
+    $("#chaos").classList.add("on");
+    host=$("#chaosproof");
+  } else {
+    openStage("Challenge", b=>{
+      b.innerHTML=`<div class="slab"><span class="pill">+${cfg.xp} XP · fail costs ${cfg.pen}</span>
+          <h3 style="font-size:21px;margin:10px 0 0">${esc(cfg.t)}</h3></div>
+        <div class="timerbar"><div class="timerfill" id="tf"></div></div>
+        <div class="clock" id="tc">${fmt(left)}</div>
+        <div id="proofhost"></div>
+        <button class="btn ghost" id="bail" style="margin-top:14px">Give up (−${cfg.pen} XP)</button>`;
+    });
+    $("#stagex").onclick=()=>finish(false,"Bailed.");
+    $("#bail").onclick=()=>finish(false,"Bailed.");
+    host=$("#proofhost");
+  }
+  cleanupProof=mountProof(cfg.proof, host, ()=>finish(true));
+  const noTimers=S.mods.cheats.noTimers;
+  paint();
+  const tick=setInterval(()=>{ if(noTimers) return; left--; paint(); if(left<=0) finish(false,"Time's up."); },1000);
+
+  function paint(){
+    const shown = noTimers ? "∞" : fmt(left);
+    const cl=document.getElementById(meltdown?"chaoscd":"tc"); if(cl) cl.textContent=shown;
+    const tf=document.getElementById("tf");
+    if(tf){ tf.style.width= noTimers?"100%":Math.max(0,left/cfg.s*100)+"%"; tf.className="timerfill"+(!noTimers&&left<=5?" dead":!noTimers&&left<=cfg.s/3?" warn":""); }
+    $("#minitext").textContent=shown;
+    if(document.hidden) document.title=shown+" left — DUOBOX";
+    pipTick(left,noTimers);
+    if(!noTimers && left===5 && navigator.vibrate) navigator.vibrate(120);
+  }
+  function finish(ok,why){
+    if(settled) return; settled=true; activeTask=null;
+    clearInterval(tick); try{cleanupProof();}catch(e){}
+    closePip(); keepAwake(false); document.title="DUOBOX";
+    $("#minitimer").classList.remove("on");
+    if(meltdown){ $("#chaos").classList.remove("on"); $("#chaosproof").innerHTML=""; } else closeStage();
+    if(ok){
+      document.body.classList.add("won");
+      addXp(cfg.xp, meltdown?"chaos":"done");
+      if(!meltdown) bumpStreak();
+      renderHome();
+      uiSound("success");
+      if(navigator.vibrate) navigator.vibrate([30,40,30]);
+    } else {
+      document.body.classList.add("fail");
+      loseXp(cfg.pen, why||"Failed.");
+      uiSound("fail");
+      if(navigator.vibrate) navigator.vibrate([200,80,200]);
+    }
+    setTimeout(()=>document.body.classList.remove("won","fail"),800);
+  }
+}
+
+/* ---------- proof detectors ---------- */
+function shrink(file,cb){
+  const img=new Image(), rd=new FileReader();
+  rd.onload=()=>{ img.onload=()=>{
+    const max=640, sc=Math.min(1,max/Math.max(img.width,img.height));
+    const cv=document.createElement("canvas"); cv.width=img.width*sc; cv.height=img.height*sc;
+    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    cb(cv.toDataURL("image/jpeg",.6));
+  }; img.src=rd.result; };
+  rd.readAsDataURL(file);
+}
+function addWall(o){
+  const e=Object.assign({id:uid(),code:S.code,t:Date.now(),by:S.me.name,color:S.me.color,type:"note",txt:"",img:""},o);
+  S.wall.unshift(e); save(); pushDoc("duobox_wall",e); renderWall();
+}
+function mountProof(type, el, pass){
+  let stop=()=>{};
+  switch(type){
+
+  case "voice": {
+    el.innerHTML=`<div class="proofbox"><h4>Voice detection</h4>
+      <div class="meter"><div class="meterfill" id="mf"></div></div>
+      <p class="tiny muted" id="vs" style="margin:8px 0 0">Asking for the mic…</p>
+      <button class="btn ghost" id="vskip" style="margin-top:10px">Mic blocked? Confirm by hand</button></div>`;
+    el.querySelector("#vskip").onclick=()=>pass();
+    navigator.mediaDevices.getUserMedia({audio:true}).then(str=>{
+      const AC=window.AudioContext||window.webkitAudioContext, ac=new AC();
+      const an=ac.createAnalyser(); an.fftSize=512;
+      ac.createMediaStreamSource(str).connect(an);
+      const buf=new Uint8Array(an.fftSize); let acc=0, last=performance.now(), raf=0;
+      const NEED=3;
+      const loop=()=>{
+        an.getByteTimeDomainData(buf);
+        let sum=0; for(let i=0;i<buf.length;i++){ const v=(buf[i]-128)/128; sum+=v*v; }
+        const rms=Math.sqrt(sum/buf.length);
+        const mf=document.getElementById("mf"); if(mf) mf.style.width=Math.min(100,rms*600)+"%";
+        const now=performance.now(), dt=(now-last)/1000; last=now;
+        if(rms>0.055) acc+=dt;
+        const vs=document.getElementById("vs");
+        if(vs) vs.textContent="Heard "+Math.min(acc,NEED).toFixed(1)+"s of "+NEED.toFixed(1)+"s";
+        if(acc>=NEED){ cleanup(); pass(); return; }
+        raf=requestAnimationFrame(loop);
+      };
+      const cleanup=()=>{ cancelAnimationFrame(raf); str.getTracks().forEach(t=>t.stop()); try{ac.close();}catch(e){} };
+      stop=cleanup; loop();
+    }).catch(()=>{ const vs=document.getElementById("vs"); if(vs) vs.textContent="Mic denied — use the button below."; });
+    break;
+  }
+
+  case "photo": {
+    el.innerHTML=`<div class="proofbox"><h4>Photo proof</h4>
+      <p class="tiny muted" style="margin:0 0 10px">The shot lands on your memory wall automatically.</p>
+      <button class="btn p1" id="snap">Open camera</button>
+      <input type="file" accept="image/*" capture="environment" id="pf" class="hide"><div id="pv"></div></div>`;
+    el.querySelector("#snap").onclick=()=>el.querySelector("#pf").click();
+    el.querySelector("#pf").onchange=e=>{
+      const f=e.target.files[0]; if(!f) return;
+      shrink(f,d=>{ addWall({txt:"Proof: challenge cleared",img:d}); pass(); });
+    };
+    break;
+  }
+
+  case "taps": {
+    let n=0; const need=25;
+    el.innerHTML=`<div class="proofbox"><h4>Tap ${need} times</h4><button class="tapbig" id="tb">0</button></div>`;
+    const b=el.querySelector("#tb");
+    b.onclick=()=>{ n++; b.textContent=n; if(navigator.vibrate) navigator.vibrate(6); if(n>=need) pass(); };
+    break;
+  }
+
+  case "hold": {
+    const need=5; let iv=null, t0=0;
+    el.innerHTML=`<div class="proofbox"><h4>Press and hold for ${need} seconds</h4>
+      <button class="tapbig" id="hb">HOLD</button>
+      <div class="meter" style="margin-top:10px"><div class="meterfill" id="hf"></div></div></div>`;
+    const b=el.querySelector("#hb");
+    const up=()=>{ clearInterval(iv); const hf=document.getElementById("hf"); if(hf) hf.style.width="0%"; };
+    b.addEventListener("pointerdown",()=>{ t0=Date.now(); clearInterval(iv);
+      iv=setInterval(()=>{ const p=Math.min(1,(Date.now()-t0)/(need*1000));
+        const hf=document.getElementById("hf"); if(hf) hf.style.width=(p*100)+"%";
+        if(p>=1){ clearInterval(iv); pass(); } },50); });
+    addEventListener("pointerup",up); addEventListener("pointercancel",up);
+    stop=()=>{ clearInterval(iv); removeEventListener("pointerup",up); removeEventListener("pointercancel",up); };
+    break;
+  }
+
+  case "draw": {
+    el.innerHTML=`<div class="proofbox"><h4>Drawing detection</h4>
+      <canvas id="pc" height="250"></canvas>
+      <p class="tiny muted" id="cov" style="margin:8px 0 0">0% of the canvas covered — needs 5%</p>
+      <button class="btn ghost" id="cl" style="margin-top:8px">Clear</button></div>`;
+    const cv=el.querySelector("#pc"); cv.width=cv.offsetWidth||320;
+    const cx=cv.getContext("2d"); cx.lineWidth=6; cx.lineCap="round"; cx.strokeStyle=getCss("--p1");
+    let down=false;
+    const pos=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+    cv.addEventListener("pointerdown",e=>{ down=true; cx.beginPath(); cx.moveTo(...pos(e)); });
+    cv.addEventListener("pointermove",e=>{ if(!down) return; e.preventDefault(); cx.lineTo(...pos(e)); cx.stroke(); });
+    const check=()=>{
+      down=false;
+      const d=cx.getImageData(0,0,cv.width,cv.height).data;
+      let hit=0, tot=0;
+      for(let i=3;i<d.length;i+=16){ tot++; if(d[i]>10) hit++; }
+      const pct=hit/tot*100;
+      const c=document.getElementById("cov");
+      if(c) c.textContent=pct.toFixed(1)+"% of the canvas covered — needs 5%";
+      if(pct>=5) pass();
+    };
+    cv.addEventListener("pointerup",check); cv.addEventListener("pointerleave",check);
+    el.querySelector("#cl").onclick=()=>cx.clearRect(0,0,cv.width,cv.height);
+    break;
+  }
+
+  case "shake": {
+    const need=12; let hits=0, lastM=0, primed=false;
+    el.innerHTML=`<div class="proofbox"><h4>Motion detection</h4>
+      <div class="meter"><div class="meterfill" id="sf"></div></div>
+      <p class="tiny muted" id="ss" style="margin:8px 0 0">0 / ${need} shakes</p>
+      <button class="btn ghost" id="sskip" style="margin-top:10px">No motion sensor? Confirm by hand</button></div>`;
+    el.querySelector("#sskip").onclick=()=>pass();
+    const handler=e=>{
+      const a=e.accelerationIncludingGravity||e.acceleration||{};
+      const m=Math.abs(a.x||0)+Math.abs(a.y||0)+Math.abs(a.z||0);
+      if(primed && Math.abs(m-lastM)>9){
+        hits++;
+        const sf=document.getElementById("sf"), ss=document.getElementById("ss");
+        if(sf) sf.style.width=(hits/need*100)+"%";
+        if(ss) ss.textContent=hits+" / "+need+" shakes";
+        if(hits>=need){ stop(); pass(); }
+      }
+      lastM=m; primed=true;
+    };
+    const begin=()=>addEventListener("devicemotion",handler);
+    if(typeof DeviceMotionEvent!=="undefined" && DeviceMotionEvent.requestPermission)
+      DeviceMotionEvent.requestPermission().then(r=>{ if(r==="granted") begin(); }).catch(()=>{});
+    else begin();
+    stop=()=>removeEventListener("devicemotion",handler);
+    break;
+  }
+
+  default:
+    el.innerHTML=`<button class="btn p2" id="mdone" style="margin-top:12px">We did it</button>`;
+    el.querySelector("#mdone").onclick=()=>pass();
+  }
+  return ()=>{ try{stop();}catch(e){} };
+}
+
+/* ---------- wall ---------- */
+let pendingPhoto=null;
+$("#wphoto").onclick=()=>$("#wfile").click();
+$("#wfile").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const img=new Image(), rd=new FileReader();
+  rd.onload=()=>{ img.onload=()=>{
+    const max=640, sc=Math.min(1,max/Math.max(img.width,img.height));
+    const cv=document.createElement("canvas"); cv.width=img.width*sc; cv.height=img.height*sc;
+    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    pendingPhoto=cv.toDataURL("image/jpeg",.6);
+    $("#wpreview").innerHTML=`<img src="${pendingPhoto}" style="width:100%;border-radius:10px;border:3px solid var(--line);margin-top:10px">`;
+  }; img.src=rd.result; };
+  rd.readAsDataURL(f);
+};
+$("#wsave").onclick=()=>{
+  const txt=$("#wtext").value.trim();
+  if(!txt && !pendingPhoto) return toast("Add a note or a photo");
+  const e={id:uid(),code:S.code,t:Date.now(),by:S.me.name,color:S.me.color,type:$("#wtype").value,txt,img:pendingPhoto||""};
+  S.wall.unshift(e); save(); pushDoc("duobox_wall",e);
+  $("#wtext").value=""; $("#wpreview").innerHTML=""; pendingPhoto=null;
+  renderWall(); addXp(5,"wall"); renderYou();
+};
+const TYPEMARK={note:"💬",joke:"😭",date:"📌",voice:"🎙️"};
+function renderWall(){
+  const el=$("#timeline"); if(!S.wall.length){ el.innerHTML=`<p class="muted tiny" style="padding:10px 0">Nothing here yet. The first thing you save becomes the start of the timeline.</p>`; return; }
+  let html="", lastDay="";
+  S.wall.slice().sort((a,b)=>b.t-a.t).forEach(e=>{
+    const d=new Date(e.t), day=d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+    if(day!==lastDay){ html+=`<div class="datehead">${day}</div>`; lastDay=day; }
+    const mine = e.by===S.me.name;
+    const person = mine? S.me : {name:e.by,color:e.color,avatar:""};
+    html+=`<div class="entry ${e.color==="p2"?"by2":""}">
+      <div class="slab" style="padding:12px">
+        <div class="tiny muted" style="display:flex;align-items:center;gap:6px">${avatarHTML(person,18)}${TYPEMARK[e.type]||"💬"} ${e.by} · ${d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+        ${e.txt?`<div style="margin-top:4px">${esc(e.txt)}</div>`:""}
+        ${e.img?`<img src="${e.img}" alt="">`:""}
+      </div></div>`;
+  });
+  el.innerHTML=html;
+}
+function esc(s){ return String(s).replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])); }
+
+/* ---------- chat ---------- */
+function renderChat(){
+  const el=$("#chatlist");
+  el.innerHTML = S.chat.length? S.chat.map(m=>{
+    const mine=m.by===S.me.id;
+    const person = mine? S.me : {name:m.name,color:m.color||"p1",avatar:""};
+    return `<div class="msg ${mine?"mine":""}">
+      <div class="whorow">${avatarHTML(person,18)}<span class="who">${esc(m.name)}</span></div>${esc(m.txt)}
+    </div>`;
+  }).join("") : `<p class="muted tiny">No messages yet. Open with something stupid.</p>`;
+  el.scrollTop=el.scrollHeight;
+}
+function sendChat(){
+  const v=$("#chatinput").value.trim(); if(!v) return;
+  const m={id:uid(),code:S.code,by:S.me.id,name:S.me.name,color:S.me.color,txt:v,t:Date.now()};
+  S.chat.push(m); save(); renderChat(); $("#chatinput").value="";
+  pushDoc("duobox_chat",m);
+  if(room){ try{ room.emit("chat",{by:S.me.id,code:S.code,m}); }catch(e){} }
+}
+$("#chatsend").onclick=sendChat;
+$("#chatinput").addEventListener("keydown",e=>{ if(e.key==="Enter") sendChat(); });
+
+/* ---------- you ---------- */
+function renderYou(){
+  const lvl=lvlOf(S.xp);
+  $("#youname").textContent=S.me.name||"you";
+  $("#youtitle").textContent=S.title;
+  $("#avme").outerHTML=avatarHTML(S.me,52).replace('class="avatar"','class="avatar" id="avme"');
+  wireAvatarPicker($("#avpick2"),$("#avfile2"),d=>{ S.me.avatar=d; save(); pushPair(); renderYou(); toast("Photo updated"); });
+  $("#youcode").textContent=S.code||"—";
+  $("#invstatus").textContent = live ? ((peerName||"Your friend")+" is in the box right now.")
+                                     : "Nobody else is here yet. Send them the code.";
+  const gate = lvl>=0 && S.mods.cheats.unlockAll ? -999 : lvl;
+  const allThemes = {...THEMES, ...Object.fromEntries((S.mods.themes||[]).map(t=>[t.id,{name:t.name,lvl:0,p1:t.p1,p2:t.p2}]))};
+  const ts=$("#themesel"); ts.innerHTML=Object.entries(allThemes).map(([k,t])=>
+    `<option value="${k}" ${gate<t.lvl?"disabled":""} ${S.theme===k?"selected":""}>${t.name}${gate<t.lvl?" — level "+t.lvl:""}</option>`).join("");
+  ts.onchange=()=>{ S.theme=ts.value; save(); applyTheme(); };
+  const allTitles = [...TITLES, ...(S.mods.titles||[]).map(t=>({t:t.t,lvl:0}))];
+  const tl=$("#titlesel"); tl.innerHTML=allTitles.map(t=>
+    `<option ${gate<t.lvl?"disabled":""} ${S.title===t.t?"selected":""}>${t.t}${gate<t.lvl?" — level "+t.lvl:""}</option>`).join("");
+  tl.onchange=()=>{ S.title=tl.value; save(); renderYou(); };
+  const stats={xp:S.xp,done:S.done,chaos:S.chaos,wall:S.wall.length,games:S.games};
+  $("#badges").innerHTML=BADGES.map(b=>{
+    const got=b.test(stats);
+    return `<div class="pill" style="opacity:${got?1:.35};padding:6px 10px">${b.em} ${b.n}</div>`;
+  }).join("");
+  const next=[...Object.values(THEMES).map(t=>({n:t.name+" theme",lvl:t.lvl})),
+              ...TITLES.map(t=>({n:'Title: "'+t.t+'"',lvl:t.lvl})),
+              {n:"Bolder challenge pack",lvl:3},{n:"Unhinged challenge pack",lvl:5}]
+             .filter(u=>u.lvl>lvl-1).sort((a,b)=>a.lvl-b.lvl).slice(0,5);
+  $("#unlocks").innerHTML=(next.length && !S.mods.cheats.unlockAll)? next.map(u=>`<div class="tiny" style="padding:4px 0">Level ${u.lvl} — ${u.n}</div>`).join("")
+    : `<div class="tiny muted">Everything's unlocked. Go make your own.</div>`;
+}
+
+/* ============================ mods ============================ */
+function applyCustomThemesToRoot(){
+  const t=THEMES[S.theme] || (S.mods.themes||[]).find(x=>x.id===S.theme);
+  return t;
+}
+function uidShort(){ return Math.random().toString(36).slice(2,8); }
+function renderMods(){
+  renderPackList(); renderThemeModList(); renderTitleModList(); renderCheatList();
+  if(!$("#srcarea").value.trim()) $("#srcarea").value=LIVE_SOURCE;
+}
+function renderPackList(){
+  const el=$("#packlist");
+  const built=`<div class="modrow"><div class="swatch" style="background:linear-gradient(135deg,var(--p1),var(--p2))"></div><b>Classic — ${CHALLENGES.length} challenges</b><span class="tiny muted">built in</span></div>`;
+  const mine=(S.mods.packs||[]).map(p=>`
+    <div class="modrow"><div class="swatch" style="background:var(--card-2)"></div><b>${esc(p.name)} — ${p.challenges.length} challenges</b>
+      <button class="del" data-editpack="${p.id}" title="Edit">✎</button>
+      <button class="del" data-delpack="${p.id}" title="Delete">✕</button></div>`).join("");
+  el.innerHTML = built + (mine || `<p class="tiny muted" style="margin:8px 0 0">No packs yet — make one below.</p>`);
+  el.querySelectorAll("[data-delpack]").forEach(b=>b.onclick=()=>{
+    if(!confirm("Delete this pack?")) return;
+    S.mods.packs=S.mods.packs.filter(p=>p.id!==b.dataset.delpack); save(); renderPackList(); toast("Pack deleted");
+  });
+  el.querySelectorAll("[data-editpack]").forEach(b=>b.onclick=()=>openPackEditor(b.dataset.editpack));
+}
+let peRows=[];
+function openPackEditor(editId){
+  const editing = editId ? S.mods.packs.find(p=>p.id===editId) : null;
+  peRows = editing ? editing.challenges.map(c=>({...c})) : [{t:"",xp:15,s:45,proof:"none"}];
+  $("#petitle").textContent = editing? "Edit pack" : "New pack";
+  $("#pename").value = editing? editing.name : "";
+  $("#packeditor").dataset.editing = editId||"";
+  $("#packeditor").classList.remove("hide");
+  drawRows();
+  $("#packeditor").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function drawRows(){
+  $("#perows").innerHTML = peRows.map((r,i)=>`
+    <div class="perow">
+      <input type="text" placeholder="Challenge text" value="${esc(r.t)}" data-f="t" data-i="${i}">
+      <input type="number" min="5" max="999" value="${r.xp}" data-f="xp" data-i="${i}" title="XP">
+      <input type="number" min="10" max="600" value="${r.s}" data-f="s" data-i="${i}" title="Seconds">
+      <select data-f="proof" data-i="${i}">
+        ${Object.keys(PROOFLABEL).map(k=>`<option value="${k}" ${r.proof===k?"selected":""}>${PROOFLABEL[k]}</option>`).join("")}
+      </select>
+      <button data-rm="${i}">✕</button>
+    </div>`).join("");
+  $("#perows").querySelectorAll("input,select").forEach(inp=>inp.oninput=inp.onchange=()=>{
+    const i=+inp.dataset.i, f=inp.dataset.f;
+    peRows[i][f] = f==="xp"||f==="s" ? (parseInt(inp.value)||0) : inp.value;
+  });
+  $("#perows").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ peRows.splice(+b.dataset.rm,1); if(!peRows.length) peRows.push({t:"",xp:15,s:45,proof:"none"}); drawRows(); });
+}
+$("#newpack").onclick=()=>openPackEditor(null);
+$("#perow").onclick=()=>{ peRows.push({t:"",xp:15,s:45,proof:"none"}); drawRows(); };
+$("#pecancel").onclick=()=>$("#packeditor").classList.add("hide");
+$("#pesave").onclick=()=>{
+  const name=$("#pename").value.trim(); if(!name) return toast("Name your pack");
+  const chs=peRows.filter(r=>r.t.trim()).map(r=>({t:r.t.trim(),xp:Math.max(5,r.xp||15),s:Math.max(10,r.s||45),proof:r.proof||"none",p:0}));
+  if(!chs.length) return toast("Add at least one challenge");
+  const editId=$("#packeditor").dataset.editing;
+  if(editId){ const p=S.mods.packs.find(x=>x.id===editId); p.name=name; p.challenges=chs; }
+  else S.mods.packs.push({id:uidShort(),name,challenges:chs});
+  save(); $("#packeditor").classList.add("hide"); renderPackList(); toast("Pack saved");
+};
+
+function renderThemeModList(){
+  const el=$("#themelist");
+  el.innerHTML=(S.mods.themes||[]).map(t=>`
+    <div class="modrow"><div class="swatch" style="background:linear-gradient(135deg,${t.p1},${t.p2})"></div><b>${esc(t.name)}</b>
+      <button class="del" data-deltheme="${t.id}">✕</button></div>`).join("") || `<p class="tiny muted">None yet.</p>`;
+  el.querySelectorAll("[data-deltheme]").forEach(b=>b.onclick=()=>{
+    S.mods.themes=S.mods.themes.filter(t=>t.id!==b.dataset.deltheme);
+    if(S.theme===b.dataset.deltheme) S.theme="bubblegum";
+    save(); renderThemeModList(); applyTheme();
+  });
+}
+$("#thadd").onclick=()=>{
+  const name=$("#thname").value.trim(); if(!name) return toast("Name the theme");
+  S.mods.themes.push({id:"c"+uidShort(),name,p1:$("#thc1").value,p2:$("#thc2").value});
+  save(); $("#thname").value=""; renderThemeModList(); toast("Theme added");
+};
+
+function renderTitleModList(){
+  const el=$("#titlelist");
+  el.innerHTML=(S.mods.titles||[]).map(t=>`
+    <div class="modrow"><div class="swatch" style="background:var(--card-2)"></div><b>${esc(t.t)}</b>
+      <button class="del" data-deltitle="${t.id}">✕</button></div>`).join("") || `<p class="tiny muted">None yet.</p>`;
+  el.querySelectorAll("[data-deltitle]").forEach(b=>b.onclick=()=>{
+    const removed=S.mods.titles.find(t=>t.id===b.dataset.deltitle);
+    S.mods.titles=S.mods.titles.filter(t=>t.id!==b.dataset.deltitle);
+    if(removed && S.title===removed.t) S.title="Freshly paired";
+    save(); renderTitleModList();
+  });
+}
+$("#ttadd").onclick=()=>{
+  const t=$("#ttname").value.trim(); if(!t) return toast("Write a title first");
+  S.mods.titles.push({id:"c"+uidShort(),t}); save(); $("#ttname").value=""; renderTitleModList(); toast("Title added");
+};
+
+const CHEATS=[
+  {k:"doubleXp", n:"Double XP", d:"Every completed challenge pays out twice."},
+  {k:"noTimers", n:"No timers", d:"Challenges and Meltdowns never run out of time."},
+  {k:"noPenalty", n:"No penalties", d:"Failing or bailing never costs you XP."},
+  {k:"unlockAll", n:"Unlock everything", d:"All themes and titles usable regardless of level."},
+  {k:"instantMeltdown", n:"Solo meltdown", d:"One press fires Meltdown immediately — no waiting on your friend."}
+];
+function renderCheatList(){
+  $("#cheatlist").innerHTML=CHEATS.map(c=>`
+    <div class="cheatrow"><div><b>${c.n}</b><span class="tiny muted">${c.d}</span></div>
+      <label class="switch"><input type="checkbox" data-cheat="${c.k}" ${S.mods.cheats[c.k]?"checked":""}><span class="slider"></span></label>
+    </div>`).join("");
+  $("#cheatlist").querySelectorAll("[data-cheat]").forEach(cb=>cb.onchange=()=>{
+    S.mods.cheats[cb.dataset.cheat]=cb.checked; save(); toast(cb.checked?"Cheat on":"Cheat off");
+  });
+  $("#modcss").value = S.mods.customCss;
+  $("#modjs").value = S.mods.customJs;
+  $("#modauto").checked = S.mods.codeModsAuto;
+}
+
+/* ---------- real code mods: CSS + JS running in the actual app ---------- */
+function applyCustomCss(){
+  let tag=document.getElementById("usercss");
+  if(!tag){ tag=document.createElement("style"); tag.id="usercss"; document.head.appendChild(tag); }
+  tag.textContent = S.mods.customCss||"";
+}
+function modErr(msg){ const e=$("#moderr"); if(e) e.textContent=msg||""; }
+function runCustomJs(){
+  const code=(S.mods.customJs||"").trim();
+  modErr("");
+  if(!code) return;
+  try{ (new Function(code))(); toast("Mod ran"); }
+  catch(e){ modErr("Mod error: "+e.message); toast("Mod error — see note below the box"); }
+}
+$("#modcssapply").onclick=()=>{ S.mods.customCss=$("#modcss").value; save(); applyCustomCss(); toast("CSS applied"); };
+$("#modjsrun").onclick=()=>{ S.mods.customJs=$("#modjs").value; save(); runCustomJs(); };
+$("#modjssave").onclick=()=>{ S.mods.customJs=$("#modjs").value; save(); toast("Saved without running"); };
+$("#modauto").onchange=e=>{ S.mods.codeModsAuto=e.target.checked; save(); };
+$("#modreset").onclick=()=>{
+  if(!confirm("Reset code mods? This clears your saved CSS and JS. It can't undo things a mod already changed this session — reload the page after.")) return;
+  S.mods.customCss=""; S.mods.customJs=""; S.mods.codeModsAuto=false; save();
+  applyCustomCss(); $("#modcss").value=""; $("#modjs").value=""; $("#modauto").checked=false; modErr("");
+  toast("Code mods reset — reload to fully clear");
+};
+/* the sandboxed API real mods get access to */
+window.DUOBOX = {
+  get state(){ return S; }, save, toast, addXp, loseXp, uiSound,
+  CHALLENGES, CHAOS, TITLES, THEMES, BADGES, PROOFLABEL,
+  go, renderHome, renderYou, renderWall, renderChat, renderMods, applyTheme,
+  avatarHTML, lvlOf, pool
+};
+
+/* ---------- full source: view, edit, and rebuild the actual running app ---------- */
+function extractInlineScripts(html){
+  const out=[]; const re=/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi; let m;
+  while((m=re.exec(html))) out.push(m[1]);
+  return out;
+}
+function validateSource(html){
+  if(!/<html/i.test(html)) return "Doesn't look like a full page — keep the <html> tag intact.";
+  const scripts=extractInlineScripts(html);
+  if(!scripts.length) return "No <script> found in that source.";
+  for(const code of scripts){
+    try{ new Function(code); } catch(e){ return "Syntax error: "+e.message; }
+  }
+  return null;
+}
+$("#srcload").onclick=()=>{ $("#srcarea").value=LIVE_SOURCE; $("#srcerr").textContent=""; toast("Loaded current source"); };
+$("#srccopy").onclick=()=>{
+  const v=$("#srcarea").value||LIVE_SOURCE;
+  if(navigator.clipboard) navigator.clipboard.writeText(v).then(()=>toast("Copied")).catch(()=>toast("Couldn't copy"));
+};
+function homeUrl(){ try{ return localStorage.getItem('duobox.homeUrl')||location.href; }catch(e){ return location.href; } }
+$("#srcapply").onclick=()=>{
+  const html=$("#srcarea").value.trim();
+  if(!html) return toast("Nothing to apply — load the source first");
+  const err=validateSource(html);
+  if(err){ $("#srcerr").textContent=err; toast("Not applied — syntax error"); return; }
+  $("#srcerr").textContent="";
+  try{
+    localStorage.setItem('duobox.sourceOverride', html);
+  }catch(e){ toast("Couldn't save — storage might be full"); return; }
+  toast("Rebuilding…");
+  const home=homeUrl();
+  setTimeout(()=>{
+    if(location.protocol==='blob:' || location.href!==home) location.href=home;
+    else location.reload();
+  }, 300);
+};
+$("#srcrevert").onclick=()=>{
+  if(!confirm("Revert to the built-in version? This clears any source edits saved on this device.")) return;
+  try{ localStorage.removeItem('duobox.sourceOverride'); localStorage.removeItem('duobox.overridePending'); }catch(e){}
+  location.href=homeUrl();
+};
+window.DUOBOX.LIVE_SOURCE = LIVE_SOURCE;
+const stage=$("#stage");
+let stageCleanup=null;
+function openStage(title, build){
+  stage.innerHTML=`<div class="stagehead"><button class="x" id="stagex">✕</button><h2>${title}</h2></div><div id="stagebody"></div>`;
+  stage.classList.add("on");
+  $("#stagex").onclick=closeStage;
+  stageCleanup=null;
+  build($("#stagebody"));
+}
+function closeStage(){
+  if(stageCleanup){ try{ stageCleanup(); }catch(e){} stageCleanup=null; }
+  stage.classList.remove("on"); stage.innerHTML="";
+}
+function endGame(body,text,xp){
+  body.innerHTML+=`<div class="slab" style="margin-top:14px;text-align:center">
+    <b class="display" style="font-size:20px">${text}</b>
+    <div style="height:10px"></div><button class="btn p1" id="claim">Claim +${xp} XP</button></div>`;
+  $("#claim").onclick=()=>{ addXp(xp,"game"); closeStage(); };
+}
+
+const GAMES=[
+ {id:"react", em:"⚡", n:"Reaction battle", d:"Tap when it flips", run:gReact},
+ {id:"draw",  em:"✏️", n:"Drawing battle", d:"Same prompt, hidden", run:gDraw},
+ {id:"sound", em:"🔊", n:"Guess the sound", d:"Ears only",         run:gSound},
+ {id:"triv",  em:"🧠", n:"Trivia",          d:"Alternating turns",  run:gTrivia},
+ {id:"mem",   em:"🃏", n:"Memory match",    d:"Pairs, turn by turn",run:gMemory},
+ {id:"know",  em:"💘", n:"Who knows who",   d:"Answer, then guess", run:gKnow},
+ {id:"voice", em:"🎤", n:"Voice-Off",       d:"Up to 4, own phones",run:runVoiceOff}
+];
+$("#gamegrid").innerHTML=GAMES.map(g=>
+  `<button class="gamecard" data-g="${g.id}"><span class="em">${g.em}</span><span><b>${g.n}</b><br><span class="tiny muted">${g.d}</span></span></button>`).join("");
+document.querySelectorAll(".gamecard").forEach(c=>c.onclick=()=>{
+  const g=GAMES.find(x=>x.id===c.dataset.g); openStage(g.n, g.run);
+});
+
+function names(){ return [S.me.name||"P1", peerName||"P2"]; }
+
+/* reaction */
+function gReact(body){
+  const [a,b]=names(); let sc=[0,0], round=0, ready=false, t0=0, timer=null;
+  body.innerHTML=`<div class="scorebar"><div>${esc(a)}<b id="sa">0</b></div><div>${esc(b)}<b id="sb">0</b></div></div>
+    <p class="tiny muted">Best of 5. ${esc(a)} taps the left half, ${esc(b)} the right. Wait for green — early taps lose the round.</p>
+    <div style="display:flex;gap:10px;margin-top:10px;min-height:46vh">
+      <div class="tapzone" id="za" style="background:var(--p1);color:#fff">${esc(a)}</div>
+      <div class="tapzone" id="zb" style="background:var(--p2);color:#06221E">${esc(b)}</div>
+    </div>
+    <p id="rstat" class="display" style="text-align:center;font-size:20px;margin-top:12px">Get ready…</p>`;
+  const stat=$("#rstat");
+  function next(){
+    if(round>=5){ const w=sc[0]===sc[1]?"Dead heat":(sc[0]>sc[1]?a:b)+" wins"; return endGame(body,w+" "+sc[0]+"–"+sc[1],20); }
+    round++; ready=false; stat.textContent="Wait for it…";
+    $("#za").style.filter="brightness(.6)"; $("#zb").style.filter="brightness(.6)";
+    timer=setTimeout(()=>{ ready=true; t0=Date.now(); stat.textContent="GO";
+      $("#za").style.filter="none"; $("#zb").style.filter="none"; }, 1200+Math.random()*2800);
+  }
+  function tap(i){
+    if(!ready){ clearTimeout(timer); sc[1-i]++; upd(); stat.textContent="Too early — point to the other one"; setTimeout(next,1100); return; }
+    sc[i]++; upd(); stat.textContent=(Date.now()-t0)+"ms"; ready=false; setTimeout(next,1100);
+  }
+  function upd(){ $("#sa").textContent=sc[0]; $("#sb").textContent=sc[1]; }
+  $("#za").onclick=()=>tap(0); $("#zb").onclick=()=>tap(1);
+  setTimeout(next,700);
+}
+
+/* drawing */
+function gDraw(body){
+  const [a,b]=names();
+  const prompts=["a horse in a hurry","your friend's face","the concept of Monday","a haunted toaster","the best sandwich","an alien pet","how you feel today","a very illegal cat"];
+  const pr=prompts[Math.floor(Math.random()*prompts.length)];
+  let turn=0, shots=[];
+  function round(){
+    const who = turn===0?a:b;
+    body.innerHTML=`<div class="slab" style="margin-bottom:10px"><b>${esc(who)}'s turn</b><div class="tiny muted">Prompt: ${pr} — 60 seconds. Other person: look away.</div></div>
+      <canvas id="cv" height="320"></canvas>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" id="clr">Clear</button><button class="btn p1" id="fin">Done <span id="tl">60</span></button></div>`;
+    const cv=$("#cv"); cv.width=cv.offsetWidth; const cx=cv.getContext("2d");
+    cx.lineWidth=4; cx.lineCap="round"; cx.strokeStyle=turn===0?getCss("--p1"):getCss("--p2");
+    let drawing=false;
+    const pos=e=>{const r=cv.getBoundingClientRect();const p=e.touches?e.touches[0]:e;return[p.clientX-r.left,p.clientY-r.top]};
+    cv.addEventListener("pointerdown",e=>{drawing=true;cx.beginPath();cx.moveTo(...pos(e))});
+    cv.addEventListener("pointermove",e=>{if(drawing){cx.lineTo(...pos(e));cx.stroke();e.preventDefault()}});
+    addEventListener("pointerup",()=>drawing=false);
+    $("#clr").onclick=()=>cx.clearRect(0,0,cv.width,cv.height);
+    let n=60; const tk=setInterval(()=>{n--;$("#tl")&&($("#tl").textContent=n);if(n<=0){clearInterval(tk);done()}},1000);
+    function done(){ clearInterval(tk); shots.push(cv.toDataURL()); turn++; turn<2?round():reveal(); }
+    $("#fin").onclick=done;
+  }
+  function reveal(){
+    body.innerHTML=`<div class="slab" style="margin-bottom:10px"><b>Prompt: ${pr}</b><div class="tiny muted">Judge yourselves.</div></div>
+      <img src="${shots[0]}" style="width:100%;border:3px solid var(--line);border-radius:14px;background:#fff"><div class="tiny muted" style="margin:4px 0 10px">${esc(a)}</div>
+      <img src="${shots[1]}" style="width:100%;border:3px solid var(--line);border-radius:14px;background:#fff"><div class="tiny muted" style="margin:4px 0">${esc(b)}</div>`;
+    endGame(body,"Battle over",20);
+  }
+  round();
+}
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#000"; }
+
+/* ---------- sound engine: noise buffers + shaped envelopes, not flat tones ---------- */
+let _ac=null;
+function ac(){ return _ac=_ac||new (window.AudioContext||window.webkitAudioContext)(); }
+function noiseBuf(dur,color){ // color: 'white'|'brown'
+  const a=ac(), n=a.createBuffer(1,a.sampleRate*dur,a.sampleRate), d=n.getChannelData(0);
+  let last=0;
+  for(let i=0;i<d.length;i++){
+    const w=Math.random()*2-1;
+    if(color==="brown"){ last=(last+0.02*w)/1.02; d[i]=last*3.2; } else d[i]=w;
+  }
+  return n;
+}
+function envGain(a,g,points){ // points: [[t,val],...]
+  g.gain.cancelScheduledValues(a.currentTime);
+  points.forEach((p,i)=> i===0 ? g.gain.setValueAtTime(p[1],a.currentTime+p[0]) : g.gain.linearRampToValueAtTime(p[1],a.currentTime+p[0]));
+}
+function tone(a,dest,freq,type,t0,t1,gain){
+  const o=a.createOscillator(), g=a.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq,a.currentTime+t0);
+  g.gain.setValueAtTime(0,a.currentTime+t0);
+  g.gain.linearRampToValueAtTime(gain,a.currentTime+t0+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+t1);
+  o.connect(g).connect(dest); o.start(a.currentTime+t0); o.stop(a.currentTime+t1+0.05);
+  return o;
+}
+function noiseHit(a,dest,dur,filterFreq,q,t0,gain,color){
+  const src=a.createBufferSource(); src.buffer=noiseBuf(dur,color);
+  const f=a.createBiquadFilter(); f.type="bandpass"; f.frequency.value=filterFreq; f.Q.value=q||1;
+  const g=a.createGain(); g.gain.setValueAtTime(0,a.currentTime+t0);
+  g.gain.linearRampToValueAtTime(gain,a.currentTime+t0+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+t0+dur);
+  src.connect(f).connect(g).connect(dest); src.start(a.currentTime+t0); src.stop(a.currentTime+t0+dur+0.05);
+}
+function playDoorbell(){ try{ const a=ac(); tone(a,a.destination,880,"sine",0,.5,.22); tone(a,a.destination,660,"sine",.28,.9,.2); }catch(e){} }
+function playBark(){
+  try{
+    const a=ac();
+    for(let i=0;i<2;i++){
+      const t0=i*.22, o=a.createOscillator(), g=a.createGain();
+      o.type="sawtooth"; o.frequency.setValueAtTime(180,a.currentTime+t0);
+      o.frequency.exponentialRampToValueAtTime(90,a.currentTime+t0+.11);
+      g.gain.setValueAtTime(0,a.currentTime+t0); g.gain.linearRampToValueAtTime(.3,a.currentTime+t0+.02);
+      g.gain.exponentialRampToValueAtTime(.001,a.currentTime+t0+.16);
+      const f=a.createBiquadFilter(); f.type="lowpass"; f.frequency.value=1400;
+      o.connect(f).connect(g).connect(a.destination); o.start(a.currentTime+t0); o.stop(a.currentTime+t0+.2);
+    }
+  }catch(e){}
+}
+function playMeow(){
+  try{
+    const a=ac(), o=a.createOscillator(), g=a.createGain();
+    o.type="sawtooth"; o.frequency.setValueAtTime(500,a.currentTime);
+    o.frequency.linearRampToValueAtTime(760,a.currentTime+.18);
+    o.frequency.linearRampToValueAtTime(340,a.currentTime+.55);
+    g.gain.setValueAtTime(0,a.currentTime); g.gain.linearRampToValueAtTime(.22,a.currentTime+.08);
+    g.gain.linearRampToValueAtTime(.16,a.currentTime+.4); g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.62);
+    const f=a.createBiquadFilter(); f.type="bandpass"; f.frequency.value=900; f.Q.value=2.2;
+    o.connect(f).connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.65);
+  }catch(e){}
+}
+function playRain(){ try{ const a=ac(); noiseHit(a,a.destination,1.1,4200,.5,0,.16,"white"); noiseHit(a,a.destination,1.1,1200,.6,0,.1,"brown"); }catch(e){} }
+function playApplause(){
+  try{
+    const a=ac();
+    for(let i=0;i<26;i++) noiseHit(a,a.destination,.09,2600+Math.random()*2000,3+Math.random()*3, Math.random()*.9, .1+Math.random()*.08,"white");
+  }catch(e){}
+}
+function playShutter(){
+  try{
+    const a=ac();
+    noiseHit(a,a.destination,.03,3000,6,0,.35,"white");
+    noiseHit(a,a.destination,.03,1800,6,.09,.3,"white");
+  }catch(e){}
+}
+function playBuzz(){
+  try{
+    const a=ac(), o=a.createOscillator(), g=a.createGain();
+    o.type="square"; o.frequency.value=175;
+    for(let i=0;i<4;i++){ g.gain.setValueAtTime(i%2?0:.22,a.currentTime+i*.12); }
+    g.gain.setValueAtTime(0,a.currentTime+.48);
+    o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.5);
+  }catch(e){}
+}
+function playFootsteps(){
+  try{
+    const a=ac();
+    for(let i=0;i<4;i++) noiseHit(a,a.destination,.12,500+Math.random()*80,1.2,i*.28,.22,"brown");
+  }catch(e){}
+}
+function uiSound(kind){
+  try{
+    const a=ac();
+    if(kind==="success"){ tone(a,a.destination,660,"sine",0,.12,.16); tone(a,a.destination,990,"sine",.08,.28,.14); }
+    else if(kind==="fail"){ tone(a,a.destination,200,"sawtooth",0,.3,.16); }
+    else if(kind==="tap"){ tone(a,a.destination,340,"sine",0,.05,.08); }
+    else if(kind==="level"){ [523,659,784,1046].forEach((f,i)=>tone(a,a.destination,f,"triangle",i*.09,i*.09+.28,.14)); }
+  }catch(e){}
+}
+
+function gSound(body){
+  let i=0, sc=0;
+  function round(){
+    if(i>=5) return endGame(body,"Scored "+sc+"/5",15);
+    const correct=SOUNDS[Math.floor(Math.random()*SOUNDS.length)];
+    const opts=[correct,...SOUNDS.filter(s=>s!==correct).sort(()=>Math.random()-.5).slice(0,3)].sort(()=>Math.random()-.5);
+    body.innerHTML=`<div class="slab"><b>Round ${i+1} of 5</b><div class="tiny muted">Tap play, then guess together.</div>
+      <div style="height:10px"></div><button class="btn p2" id="pl">▶ Play sound</button></div>
+      ${opts.map((o,k)=>`<button class="btn opt" data-k="${k}">${o.n}</button>`).join("")}`;
+    $("#pl").onclick=()=>correct.make();
+    body.querySelectorAll(".opt").forEach(btn=>btn.onclick=()=>{
+      const ok=opts[btn.dataset.k]===correct; if(ok) sc++;
+      btn.style.background=ok?"var(--p2)":"var(--p1)"; btn.style.color="#fff";
+      uiSound(ok?"success":"fail");
+      i++; setTimeout(round,700);
+    });
+    correct.make();
+  }
+  round();
+}
+
+/* trivia */
+function gTrivia(body){
+  const [a,b]=names(); const qs=TRIVIA.slice().sort(()=>Math.random()-.5).slice(0,8);
+  let i=0, sc=[0,0];
+  function round(){
+    if(i>=qs.length){ const w=sc[0]===sc[1]?"Tie":(sc[0]>sc[1]?a:b)+" wins"; return endGame(body,w+" "+sc[0]+"–"+sc[1],20); }
+    const who=i%2, q=qs[i];
+    const opts=q.a.map((t,k)=>({t,ok:k===q.c})).sort(()=>Math.random()-.5);
+    body.innerHTML=`<div class="scorebar"><div>${esc(a)}<b>${sc[0]}</b></div><div>${esc(b)}<b>${sc[1]}</b></div></div>
+      <div class="slab"><span class="pill">${esc(who===0?a:b)}'s question</span><h3 style="margin:10px 0 0;font-size:20px">${q.q}</h3></div>
+      ${opts.map((o,k)=>`<button class="btn opt" data-k="${k}">${o.t}</button>`).join("")}`;
+    body.querySelectorAll(".opt").forEach(btn=>btn.onclick=()=>{
+      const o=opts[btn.dataset.k]; if(o.ok) sc[who]++;
+      btn.style.background=o.ok?"var(--p2)":"var(--p1)"; btn.style.color="#fff";
+      i++; setTimeout(round,750);
+    });
+  }
+  round();
+}
+
+/* memory */
+function gMemory(body){
+  const [a,b]=names();
+  const ems=["🍕","👻","🐸","🚀","🧦","🦷","🪩","🐙"];
+  const deck=[...ems,...ems].sort(()=>Math.random()-.5);
+  let up=[], sc=[0,0], turn=0, lock=false, found=0;
+  body.innerHTML=`<div class="scorebar"><div>${esc(a)}<b id="ma">0</b></div><div>${esc(b)}<b id="mb">0</b></div></div>
+    <p class="display" id="mturn" style="text-align:center;font-size:18px;margin:0 0 10px"></p>
+    <div class="memgrid">${deck.map((e,i)=>`<div class="memcard" data-i="${i}"></div>`).join("")}</div>`;
+  const turnEl=$("#mturn"); const show=()=>turnEl.textContent=(turn===0?a:b)+"'s go";
+  show();
+  body.querySelectorAll(".memcard").forEach(c=>c.onclick=()=>{
+    if(lock||c.classList.contains("up")||c.classList.contains("gone")) return;
+    c.textContent=deck[c.dataset.i]; c.classList.add("up"); up.push(c);
+    if(up.length===2){
+      lock=true;
+      const match=deck[up[0].dataset.i]===deck[up[1].dataset.i];
+      setTimeout(()=>{
+        if(match){ up.forEach(x=>x.classList.add("gone")); sc[turn]++; found++;
+          $("#ma").textContent=sc[0]; $("#mb").textContent=sc[1]; }
+        else { up.forEach(x=>{x.classList.remove("up");x.textContent=""}); turn=1-turn; }
+        up=[]; lock=false; show();
+        if(found===ems.length){ const w=sc[0]===sc[1]?"Tie":(sc[0]>sc[1]?a:b)+" wins"; endGame(body,w+" "+sc[0]+"–"+sc[1],20); }
+      },700);
+    }
+  });
+}
+
+/* who knows who */
+function gKnow(body){
+  const [a,b]=names(); const qs=KNOWQ.slice().sort(()=>Math.random()-.5).slice(0,5);
+  let i=0, sc=0, phase=0, own="";
+  function step(){
+    if(i>=qs.length) return endGame(body,"You got "+sc+"/"+qs.length+" right",25);
+    const q=qs[i];
+    if(phase===0){
+      body.innerHTML=`<div class="slab"><span class="pill">${esc(a)} answers — hide the screen</span><h3 style="font-size:20px;margin:10px 0">${q}</h3>
+        <input id="ans" placeholder="Your honest answer"></div>
+        <button class="btn p1 opt" id="nx" style="margin-top:12px">Lock it in</button>`;
+      $("#nx").onclick=()=>{ own=$("#ans").value.trim()||"(blank)"; phase=1; step(); };
+    } else {
+      body.innerHTML=`<div class="slab"><span class="pill">${esc(b)} guesses</span><h3 style="font-size:20px;margin:10px 0">${q}</h3>
+        <input id="gs" placeholder="What did they say?"></div>
+        <button class="btn p2 opt" id="rv" style="margin-top:12px">Reveal</button>`;
+      $("#rv").onclick=()=>{
+        const g=$("#gs").value.trim();
+        body.innerHTML=`<div class="slab"><div class="tiny muted">${q}</div>
+          <div style="margin-top:8px"><b>${esc(a)} said:</b> ${esc(own)}</div>
+          <div style="margin-top:4px"><b>${esc(b)} guessed:</b> ${esc(g||"(blank)")}</div></div>
+          <div class="row" style="margin-top:12px"><button class="btn p2" id="yes">Close enough</button><button class="btn ghost" id="no">Not even</button></div>`;
+        $("#yes").onclick=()=>{sc++;i++;phase=0;step()};
+        $("#no").onclick=()=>{i++;phase=0;step()};
+      };
+    }
+  }
+  step();
+}
+
+/* ---------- Voice-Off: Kahoot-style PIN lobby, up to 4 players, real-life voices ---------- */
+const SOUND_PROMPTS=[
+  "a goat","a dying robot","a dolphin","an old door hinge","a dial-up modem",
+  "someone stepping on Lego","a ghost in a haunted house","a vacuum cleaner","a UFO landing",
+  "an opera singer hitting a high note","a fax machine","a police siren","a dinosaur",
+  "a squeaky shopping cart wheel","a kettle about to boil over","a cat that just saw a cucumber",
+  "a submarine diving","an alarm clock nobody wants to wake up to","a race car engine revving",
+  "a broken violin","a robot vacuum stuck under the couch","a really disappointed sigh, but musical",
+  "a crying baby seagull","a printer jamming","a toddler pretending to be a dragon"
+];
+const VOICE_ROUNDS=8, VOICE_ROUND_SECONDS=8, VOICE_DECIDE_SECONDS=20;
+function speak(text){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.rate=1.0; u.pitch=1.1;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+function voiceDing(){
+  try{ const a=ac(); tone(a,a.destination,880,"sine",0,.16,.2); tone(a,a.destination,1320,"sine",.1,.32,.16); }catch(e){}
+}
+function newPin(){
+  const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+  for(let i=0;i<4;i++) s+=A[Math.floor(Math.random()*A.length)];
+  return s;
+}
+function runVoiceOff(body){
+  let pin="", role=null, myId=S.me.id, myName=S.me.name||"You";
+  let roster=[], round=0, prompt="", endsAt=0, myOrder=[];
+  let hostTimer=null, voteTimeout=null, tickTimer=null, decideTick=null, decideEndsAt=0;
+  let ballotBucket={};
+  let myStream=null, recorder=null, clips={};
+
+  function send(type,extra){
+    const msg=Object.assign({type,pin}, extra||{});
+    if(room){ try{ room.emit("voicegame", msg); }catch(e){} }
+    else if(voiceOffHandler){ voiceOffHandler(msg); }
+  }
+  function onLobbyScreen(){ return !!document.getElementById("voroster"); }
+
+  function renderEntry(){
+    body.innerHTML=`
+      <div class="slab">
+        <b class="display" style="font-size:18px">Voice-Off</b>
+        <p class="tiny muted" style="margin:6px 0 14px">Up to 4 players, each on their own phone in the same room. One of you hosts and shares a code — everyone else joins with it. The app just prompts and times; you actually hear each other for real, then rank each other on your phones.</p>
+        <div class="row">
+          <button class="btn p1" id="vohost">Host a game</button>
+          <button class="btn ghost" id="vojoin">Join a game</button>
+        </div>
+      </div>
+      <div class="slab hide" id="vojoinbox" style="margin-top:12px">
+        <label for="vopin">Game code</label>
+        <input id="vopin" maxlength="4" placeholder="e.g. 7K2Q" style="text-transform:uppercase">
+        <div style="height:10px"></div>
+        <button class="btn p2" id="vojoingo">Join</button>
+      </div>`;
+    $("#vohost").onclick=()=>{
+      role="host"; pin=newPin(); roster=[{id:myId,name:myName}]; round=0; ballotBucket={};
+      renderLobby();
+    };
+    $("#vojoin").onclick=()=>{ $("#vojoinbox").classList.remove("hide"); $("#vopin").focus(); };
+    $("#vojoingo").onclick=()=>{
+      const p=$("#vopin").value.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+      if(p.length<4) return toast("That code looks short — check it");
+      role="player"; pin=p; roster=[{id:myId,name:myName}];
+      send("join",{id:myId,name:myName});
+      renderLobby();
+    };
+  }
+
+  function renderLobby(){
+    body.innerHTML=`
+      <div class="slab" style="text-align:center">
+        <div class="tiny muted">${role==="host"?"Share this code":"You're in"}</div>
+        <div class="codebig" style="font-size:40px;margin:10px 0">${pin}</div>
+        <div class="tiny muted" style="margin-bottom:10px">${roster.length} player${roster.length===1?"":"s"} in — up to 4</div>
+        <div id="voroster" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:14px"></div>
+        ${role==="host" ? `<button class="btn p1" id="vostart">Start (${VOICE_ROUNDS} rounds)</button>` : `<p class="tiny muted">Waiting for the host to start…</p>`}
+      </div>`;
+    $("#voroster").innerHTML=roster.map(p=>`<span class="pill">${esc(p.name)}${p.id===myId?" (you)":""}</span>`).join("");
+    if(role==="host"){
+      $("#vostart").onclick=()=>{
+        if(roster.length<2 && !confirm("It's just you so far — start solo to test it?")) return;
+        nextRound();
+      };
+    }
+  }
+
+  function nextRound(){
+    round++;
+    const text=SOUND_PROMPTS[Math.floor(Math.random()*SOUND_PROMPTS.length)];
+    const at=Date.now()+VOICE_ROUND_SECONDS*1000;
+    if(hostTimer) clearTimeout(hostTimer);
+    send("prompt",{round, text, endsAt:at, roster});
+    hostTimer=setTimeout(()=>{
+      const decideAt=Date.now()+VOICE_DECIDE_SECONDS*1000;
+      send("vote",{round, roster, decideEndsAt:decideAt});
+      voteTimeout=setTimeout(()=>forceTally(round), VOICE_DECIDE_SECONDS*1000+2000);
+    }, VOICE_ROUND_SECONDS*1000+300);
+  }
+
+  function ensureMic(){
+    if(myStream) return Promise.resolve(myStream);
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(null);
+    return navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ myStream=s; return s; }).catch(()=>null);
+  }
+  function startRecording(){
+    if(!myStream || typeof MediaRecorder==="undefined") return;
+    try{
+      const mimeCandidates=["audio/webm;codecs=opus","audio/webm","audio/mp4"];
+      const mime=mimeCandidates.find(t=>MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+      const rec=new MediaRecorder(myStream, mime?{mimeType:mime}:undefined);
+      const myRound=round, chunks=[];
+      rec.ondataavailable=e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{
+        if(!chunks.length) return;
+        const blob=new Blob(chunks, {type:rec.mimeType||"audio/webm"});
+        const reader=new FileReader();
+        reader.onload=()=>{ send("clip",{round:myRound, from:myId, name:myName, audio:reader.result}); };
+        reader.readAsDataURL(blob);
+      };
+      recorder=rec; rec.start();
+      setTimeout(()=>{ if(rec.state==="recording") rec.stop(); }, VOICE_ROUND_SECONDS*1000);
+    }catch(e){}
+  }
+
+  function renderPrompt(){
+    clips[round]=clips[round]||{};
+    body.innerHTML=`
+      <div class="slab" style="text-align:center">
+        <span class="pill">Round ${round} of ${VOICE_ROUNDS}</span>
+        <h3 style="font-size:24px;margin:14px 0 6px">Make a sound like…</h3>
+        <div class="display" style="font-size:23px;margin-bottom:14px">${esc(prompt)}</div>
+        <div class="clock" id="voclock">--</div>
+        <p class="tiny muted" style="margin-top:10px" id="vomicnote">Say it out loud — this phone is recording you so everyone can hear it back.</p>
+      </div>`;
+    voiceDing();
+    speak("Make a sound like "+prompt);
+    ensureMic().then(s=>{
+      const note=document.getElementById("vomicnote");
+      if(s){ startRecording(); }
+      else if(note){ note.textContent="Mic not available on this device — you can still listen and rank."; }
+    });
+    if(tickTimer) clearInterval(tickTimer);
+    const tick=()=>{
+      const left=Math.max(0,Math.ceil((endsAt-Date.now())/1000));
+      const el=document.getElementById("voclock"); if(el) el.textContent=left;
+      if(left<=0) clearInterval(tickTimer);
+    };
+    tick(); tickTimer=setInterval(tick,200);
+  }
+
+  function renderVote(){
+    playBuzz();
+    myOrder=[];
+    clips[round]=clips[round]||{};
+    body.innerHTML=`
+      <div class="slab">
+        <span class="pill">Round ${round} — listen, then rank</span>
+        <div class="clock" id="vodclock" style="margin:8px 0">--</div>
+        <p class="tiny muted" style="margin:0 0 12px">20 seconds to decide. Play each clip, then tap best to worst — ranking yourself is fair game.</p>
+        <div id="vopicks"></div>
+        <div id="voorder" style="margin-top:12px"></div>
+      </div>`;
+    if(decideTick) clearInterval(decideTick);
+    const dtick=()=>{
+      const left=Math.max(0,Math.ceil((decideEndsAt-Date.now())/1000));
+      const el=document.getElementById("vodclock"); if(el) el.textContent=left;
+      if(left<=0) clearInterval(decideTick);
+    };
+    dtick(); decideTick=setInterval(dtick,200);
+    drawPicks();
+  }
+  function playClip(id){
+    const c=clips[round] && clips[round][id];
+    if(!c) return;
+    try{ new Audio(c.audio).play().catch(()=>{}); }catch(e){}
+  }
+  function drawPicks(){
+    const remaining=roster.filter(p=>!myOrder.includes(p.id));
+    const el=document.getElementById("vopicks"); if(!el) return;
+    el.innerHTML = remaining.length ? remaining.map(p=>{
+      const has=clips[round] && clips[round][p.id];
+      return `<div class="row" style="margin-bottom:8px">
+        <button class="btn ghost" data-play="${p.id}" style="flex:0 0 54px" ${has?"":"disabled"}>${has?"▶":"…"}</button>
+        <button class="btn opt" data-pick="${p.id}">${esc(p.name)}${p.id===myId?" (you)":""}</button>
+      </div>`;
+    }).join("") : `<p class="tiny muted">All ranked — sending…</p>`;
+    el.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>playClip(b.dataset.play));
+    el.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{
+      myOrder.push(b.dataset.pick); drawPicks(); drawOrder();
+      if(myOrder.length===roster.length) send("ballot",{round, voter:myId, order:myOrder});
+    });
+    drawOrder();
+  }
+  function drawOrder(){
+    const el=document.getElementById("voorder"); if(!el) return;
+    el.innerHTML=myOrder.map((id,i)=>{
+      const p=roster.find(x=>x.id===id);
+      return `<div class="modrow"><b>#${i+1} — ${esc(p?p.name:"?")}</b></div>`;
+    }).join("");
+  }
+
+  function onBallot(d){
+    if(role!=="host") return;
+    ballotBucket[d.round]=ballotBucket[d.round]||{votes:{},tallied:false};
+    if(ballotBucket[d.round].tallied) return;
+    ballotBucket[d.round].votes[d.voter]=d.order;
+    if(Object.keys(ballotBucket[d.round].votes).length>=roster.length) doTally(d.round);
+  }
+  function forceTally(r){
+    if(role!=="host") return;
+    ballotBucket[r]=ballotBucket[r]||{votes:{},tallied:false};
+    if(!ballotBucket[r].tallied) doTally(r);
+  }
+  function doTally(r){
+    if(voteTimeout) clearTimeout(voteTimeout);
+    ballotBucket[r].tallied=true;
+    const n=roster.length, roundScores={};
+    roster.forEach(p=>roundScores[p.id]=0);
+    Object.values(ballotBucket[r].votes).forEach(order=>{
+      order.forEach((id,i)=>{ roundScores[id]=(roundScores[id]||0)+(n-i); });
+    });
+    if(!doTally.totals) doTally.totals={};
+    roster.forEach(p=>{
+      doTally.totals[p.id]=(doTally.totals[p.id]||0)+(roundScores[p.id]||0);
+    });
+    send("results",{round:r, roundScores, totals:doTally.totals, final: r>=VOICE_ROUNDS});
+  }
+
+  function renderResults(d){
+    const ranked=roster.slice().sort((a,b)=>(d.totals[b.id]||0)-(d.totals[a.id]||0));
+    body.innerHTML=`
+      <div class="slab">
+        <span class="pill">Round ${d.round} results</span>
+        <div id="voresults" style="margin-top:10px"></div>
+        ${d.final ? `<p class="tiny muted" style="margin-top:12px">That's all ${VOICE_ROUNDS} rounds.</p><button class="btn p1" id="vofinal" style="margin-top:6px">See final results</button>`
+                  : (role==="host" ? `<button class="btn p1" id="vonext" style="margin-top:12px">Next round</button>` : `<p class="tiny muted" style="margin-top:12px">Waiting for the host…</p>`)}
+      </div>`;
+    document.getElementById("voresults").innerHTML=ranked.map((p,i)=>
+      `<div class="modrow"><b>${i===0?"🏆 ":"#"+(i+1)+" "}${esc(p.name)}</b><span class="tiny muted" style="margin-left:auto">${d.totals[p.id]||0} pts (+${d.roundScores[p.id]||0})</span></div>`).join("");
+    if(!d.final && role==="host") $("#vonext").onclick=()=>nextRound();
+    if(d.final) $("#vofinal").onclick=()=>renderFinal(d.totals);
+  }
+
+  function renderFinal(totalsFinal){
+    const ranked=roster.slice().sort((a,b)=>(totalsFinal[b.id]||0)-(totalsFinal[a.id]||0));
+    const topScore=totalsFinal[ranked[0]?.id]||0;
+    const iWon = (totalsFinal[myId]||0)===topScore && topScore>0;
+    const myXp = iWon ? 65 : 15;
+    body.innerHTML=`
+      <div class="slab" style="text-align:center">
+        <b class="display" style="font-size:22px">Final results</b>
+        <div id="vopodium" style="margin-top:14px"></div>
+        <button class="btn p1" id="voclaim" style="margin-top:14px">Claim +${myXp} XP and exit</button>
+      </div>`;
+    document.getElementById("vopodium").innerHTML=ranked.map((p,i)=>
+      `<div class="modrow"><b>${["🥇","🥈","🥉"][i]||("#"+(i+1))} ${esc(p.name)}</b><span class="tiny muted" style="margin-left:auto">${totalsFinal[p.id]||0} pts</span></div>`).join("");
+    $("#voclaim").onclick=()=>{ addXp(myXp,"game"); closeStage(); };
+  }
+
+  voiceOffHandler=(d)=>{
+    if(!d || d.pin!==pin) return;
+    if(d.type==="join"){
+      if(role==="host"){
+        if(!roster.find(p=>p.id===d.id)) roster.push({id:d.id,name:d.name});
+        send("roster",{roster});
+        if(onLobbyScreen()) renderLobby();
+      }
+    } else if(d.type==="roster"){
+      if(role==="player"){ roster=d.roster.slice(); if(onLobbyScreen()) renderLobby(); }
+    } else if(d.type==="prompt"){
+      round=d.round; prompt=d.text; endsAt=d.endsAt; roster=d.roster.slice(); renderPrompt();
+    } else if(d.type==="vote"){
+      roster=d.roster.slice(); decideEndsAt=d.decideEndsAt||(Date.now()+VOICE_DECIDE_SECONDS*1000); renderVote();
+    } else if(d.type==="clip"){
+      clips[d.round]=clips[d.round]||{};
+      clips[d.round][d.from]={name:d.name, audio:d.audio};
+      if(d.round===round && document.getElementById("vopicks")) drawPicks();
+    } else if(d.type==="ballot"){
+      onBallot(d);
+    } else if(d.type==="results"){
+      renderResults(d);
+    }
+  };
+  stageCleanup=()=>{
+    voiceOffHandler=null;
+    if(hostTimer) clearTimeout(hostTimer);
+    if(voteTimeout) clearTimeout(voteTimeout);
+    if(tickTimer) clearInterval(tickTimer);
+    if(decideTick) clearInterval(decideTick);
+    try{ if(recorder && recorder.state==="recording") recorder.stop(); }catch(e){}
+    try{ if(myStream) myStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  };
+  renderEntry();
+}
+
+/* ============================ boot ============================ */
+function boot(){
+  const h=(location.hash.match(/join=([^&]+)/)||[])[1];
+  if(h && !S.code){
+    $("#joinwrap").classList.remove("hide");
+    $("#pcode").value=decodeURIComponent(h).toUpperCase();
+  }
+  if(!S.code || !S.me.name){ $("#s-start").classList.add("on"); $("#nav").classList.add("hide"); return; }
+  $("#s-start").classList.remove("on");
+  $("#nav").classList.remove("hide");
+  $("#pairlabel").textContent=S.code;
+  $("#chipav").innerHTML=avatarHTML(S.me,20);
+  applyTheme(); renderHome(); renderWall(); renderChat(); renderYou();
+  applyCustomCss();
+  if(S.mods.codeModsAuto) try{ runCustomJs(); }catch(e){}
+  go("home");
+  connect();
+}
+load();
+if(!S.me.id) S.me.id=uid();
+$("#pick1").click();
+boot();
+if(sessionStorage.getItem('duobox.revertedNotice')==='1'){
+  sessionStorage.removeItem('duobox.revertedNotice');
+  setTimeout(()=>toast("Last source edit crashed the app — reverted to the built-in version."),400);
+}
+try{ localStorage.setItem('duobox.overridePending','0'); }catch(e){}
+</script>
+</body>
+</html>
